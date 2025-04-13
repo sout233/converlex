@@ -1,0 +1,9 @@
+[package]
+name = "converlex"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+rfd = "0.15.3"
+vizia = {git = "https://github.com/vizia/vizia"}
