@@ -1,7 +1,10 @@
+use app_data_derived_lenses::show_config_window;
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use std::fmt::Display;
+use std::fs;
 use std::{path::Path, process::Command};
 use vizia::prelude::*;
+use vizia::views::combo_box_derived_lenses::selected;
 
 #[derive(Lens, Data, Clone)]
 pub struct AppData {
@@ -9,14 +12,17 @@ pub struct AppData {
     tasks: Vec<Task>,
     format_to_list: Vec<Audio>,
     selected_format: usize,
+    show_config_window:bool,
 }
 
 pub enum AppEvent {
     AddTask(Option<String>),
     RemoveTask(usize),
     ToggleTask(usize),
+    ChangeOutputFormat(usize, usize),
     StartConvert,
     RemoveAll,
+    ShowConifgWindow(usize),
 }
 
 #[derive(Lens, Data, Clone)]
@@ -24,12 +30,12 @@ pub struct Task {
     name: Option<String>,
     // config: ConvertConfig,
     done: bool,
+    supported_output_formats: Vec<Audio>,
+    selected_output_format: usize,
 }
 
 #[derive(Lens, Data, Clone)]
-pub struct ConvertConfig {
-
-}
+pub struct ConvertConfig {}
 
 enum Video {
     Mp4,
@@ -47,14 +53,14 @@ pub enum Audio {
 impl Display for Audio {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Audio::Mp3 => write!(f, "MP3"),
-            Audio::Wav => write!(f, "WAV"),
-            Audio::Flac => write!(f, "FLAC"),
+            Audio::Mp3 => write!(f, "mp3"),
+            Audio::Wav => write!(f, "wav"),
+            Audio::Flac => write!(f, "flac"),
         }
     }
 }
 
-pub struct TaskItemRow{
+pub struct TaskItemRow {
     task_name: String,
     selected_format: usize,
     format_to_list: Vec<Audio>,
@@ -63,8 +69,10 @@ pub struct TaskItemRow{
 impl View for TaskItemRow {}
 
 impl TaskItemRow {
-    fn new<L>(cx: &mut Context, task_name: L) -> Handle<Self> 
-    where L: Lens<Target = String> {
+    fn new<L>(cx: &mut Context, task_name: L) -> Handle<Self>
+    where
+        L: Lens<Target = String>,
+    {
         Self {
             task_name: task_name.get(cx),
             selected_format: 0,
@@ -105,6 +113,8 @@ impl Model for AppData {
                 self.tasks.push(Task {
                     name: Some(final_name),
                     done: false,
+                    supported_output_formats: vec![Audio::Mp3, Audio::Wav, Audio::Flac],
+                    selected_output_format: 0,
                 });
                 self.indices.push(self.tasks.len() - 1);
             }
@@ -115,55 +125,60 @@ impl Model for AppData {
             AppEvent::ToggleTask(index) => {
                 self.tasks[*index].done = !self.tasks[*index].done;
             }
+            AppEvent::ChangeOutputFormat(index, selected_format) => {
+                self.tasks[*index].selected_output_format = *selected_format;
+            }
             AppEvent::StartConvert => {
-                let tasks = self.tasks.clone();
-                let indices = self.indices.clone();
-                for index in indices {
-                    let task = &tasks[index];
-                    if !task.done {
-                        if let Some(input_path) = &task.name {
-                            let output_path = get_output_path(input_path, "mp3");
+                for index in &self.indices {
+                    let task = &self.tasks[*index];
+                    if task.done {
+                        continue;
+                    }
 
-                            if input_path == &output_path {
-                                println!("输入输出路径相同，跳过！");
-                                continue;
-                            }
+                    if let Some(input_path) = &task.name {
+                        let output_format =
+                            &task.supported_output_formats[task.selected_output_format];
+                        let mut output_path = get_output_path(input_path, &output_format.to_string(),true);
 
-                            let choice = MessageDialog::new()
-                                .set_level(MessageLevel::Info)
-                                .set_title("转换确认")
+                        if input_path == &output_path {
+                            println!("输入输出路径相同，跳过任务：{}", input_path);
+                            continue;
+                        }
+
+                        if Path::new(&output_path).exists() {
+                            let overwrite = MessageDialog::new()
+                                .set_level(MessageLevel::Warning)
+                                .set_title("文件已存在")
                                 .set_description(&format!(
-                                    "是否删除源文件？\n\n源文件:\n{}\n输出文件:\n{}",
+                                    "输出文件已存在，是否覆盖？\n\n源文件:\n{}\n输出文件:\n{}",
                                     input_path, output_path
                                 ))
-                                .set_buttons(MessageButtons::YesNoCancel)
+                                .set_buttons(MessageButtons::YesNo)
                                 .show();
 
-                            match choice {
+                            match overwrite{
                                 MessageDialogResult::Yes => {
-                                    if convert_media(input_path, &output_path).is_ok() {
-                                        let _ = std::fs::remove_file(input_path);
-                                        println!("转换成功并删除源文件：{}", input_path);
-                                    } else {
-                                        println!("任务转换失败：{}", input_path);
+                                    if let Err(e) = fs::remove_file(&output_path) {
+                                        println!("无法删除已存在的文件：{}，错误：{}", output_path, e);
+                                        continue;
                                     }
-                                }
-                                MessageDialogResult::No => {
-                                    if convert_media(input_path, &output_path).is_err() {
-                                        println!("任务转换失败：{}", input_path);
-                                    }
-                                }
-                                MessageDialogResult::Cancel => {
-                                    println!("取消转换：{}", input_path);
-                                }
-                                MessageDialogResult::Ok => todo!(),
-                                MessageDialogResult::Custom(_) => todo!(),
+                                },
+                                MessageDialogResult::No => output_path = get_output_path(input_path, &output_format.to_string(), false),
+                                _=>{}
                             }
+                        }
+
+                        match convert_media(input_path, &output_path) {
+                            Ok(_) => println!("转换成功：{} -> {}", input_path, output_path),
+                            Err(e) => println!("任务转换失败：{}，错误：{}", input_path, e),
                         }
                     }
                 }
             }
-            _ => {}
+            AppEvent::ShowConifgWindow(idx)=>{
+                self.show_config_window = true;
+            }
+            _ => unimplemented!(),
         });
     }
 }
@@ -175,6 +190,7 @@ fn main() -> Result<(), ApplicationError> {
             tasks: vec![],
             format_to_list: vec![Audio::Mp3, Audio::Wav, Audio::Flac],
             selected_format: 0,
+            show_config_window: false,
         }
         .build(cx);
 
@@ -196,9 +212,26 @@ fn main() -> Result<(), ApplicationError> {
                 Binding::new(cx, idx, |cx, index| {
                     let index = index.get(cx);
                     let item = AppData::tasks.map_ref(move |tasks| &tasks[index]);
-                    let name = item.get(cx).name;
+                    let name = item.then(Task::name).unwrap();
+                    let supported_output_formats = item.then(Task::supported_output_formats);
+                    let selected_output_format = item.then(Task::selected_output_format);
+                    HStack::new(cx, |cx| {
+                        Label::new(cx, name);
+                        // ComboBox::new(cx, supported_output_formats, selected_output_format)
+                        //     .on_select(move |cx, selected_format| {
+                        //         cx.emit(AppEvent::ChangeOutputFormat(index, selected_format));
+                        //     });
+                        Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx|{
+                            cx.emit(AppEvent::ShowConifgWindow(index));
+                        });
+
+                    });
                     // TaskItemRow::new(cx, AppData::tasks.map_ref(move |tasks| &tasks[index]).get());
                 });
+            });
+
+            Binding::new(cx,AppData::show_config_window,|cx,show_config_window|{
+
             });
         })
         .on_drop(|ex, data| {
@@ -238,14 +271,13 @@ fn convert_media(input: &str, output: &str) -> Result<(), String> {
         .map_err(|e| format!("启动失败: {}", e))?;
 
     if status.success() {
-        println!("转换成功：{} -> {}", input, output);
         Ok(())
     } else {
         Err("ffmpeg 转换失败".into())
     }
 }
 
-fn get_output_path(input_path: &str, new_ext: &str) -> String {
+fn get_output_path(input_path: &str, new_ext: &str, overwrite: bool) -> String {
     let path = Path::new(input_path);
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
     let parent = path.parent().unwrap_or_else(|| Path::new(""));
@@ -253,9 +285,11 @@ fn get_output_path(input_path: &str, new_ext: &str) -> String {
     let mut output_path = parent.join(format!("{}_converted.{}", stem, new_ext));
     let mut count = 1;
 
-    while output_path.exists() {
-        output_path = parent.join(format!("{}_converted_{}.{}", stem, count, new_ext));
-        count += 1;
+    if !overwrite{
+        while output_path.exists() {
+            output_path = parent.join(format!("{}_converted_{}.{}", stem, count, new_ext));
+            count += 1;
+        }
     }
 
     output_path.to_string_lossy().to_string()
