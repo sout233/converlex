@@ -25,13 +25,20 @@ label.count {
 } */
 
 .main-container {
-    alignment: top;
-    padding: 10px;
+  alignment: top;
+  padding: 10px;
 }
 
-.menu-btns-row{
-    alignment: top;
-    gap: 4px;
-    height: 50px;
-    /* background-color: cadetblue; */
+.menu-btns-row {
+  alignment: top;
+  gap: 4px;
+  height: 50px;
+  /* background-color: cadetblue; */
+}
+
+.config-row {
+  alignment: left;
+  height: auto;
+  background-color: aqua;
+  padding: 4px;
 }

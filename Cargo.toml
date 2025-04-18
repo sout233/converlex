@@ -6,4 +6,4 @@ build = "build.rs"
 
 [dependencies]
 rfd = "0.15.3"
-vizia = {git = "https://github.com/vizia/vizia"}
+vizia = { git = "https://github.com/vizia/vizia" }
