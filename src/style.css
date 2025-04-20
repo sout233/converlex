@@ -42,3 +42,8 @@ label.count {
   background-color: aqua;
   padding: 4px;
 }
+
+.auto-rename-checkbox{
+  width: auto;
+  background-color: red;
+}
