@@ -68,21 +68,30 @@ pub fn popup(cx: &mut Context)-> Handle<Window> {
                     .class("config-row");
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output Format").width(Stretch(1.0));
-                        ComboBox::new(
-                            cx,
-                            supported_output_formats,
-                            selected_output_format,
-                        )
-                        .alignment(Alignment::Right)
-                        .width(Pixels(100.0))
-                        .on_select(
-                            move |cx, selected_format| {
+                        PickList::new(cx, supported_output_formats, selected_output_format,true)
+                            .alignment(Alignment::Right)
+                            .width(Pixels(100.0))
+                            .on_select(move |cx, selected_format| {
                                 cx.emit(AppEvent::ChangeOutputFormat(
                                     index,
                                     selected_format,
                                 ));
-                            },
-                        );
+                            });
+                        // ComboBox::new(
+                        //     cx,
+                        //     supported_output_formats,
+                        //     selected_output_format,
+                        // )
+                        // .alignment(Alignment::Right)
+                        // .width(Pixels(100.0))
+                        // .on_select(
+                        //     move |cx, selected_format| {
+                        //         cx.emit(AppEvent::ChangeOutputFormat(
+                        //             index,
+                        //             selected_format,
+                        //         ));
+                        //     },
+                        // );
                     })
                     .class("config-row");
                 });

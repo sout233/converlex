@@ -6,11 +6,11 @@ use vizia::prelude::*;
 
 mod app_data;
 mod app_event;
+mod combobox;
+mod config_window;
 mod media_format;
 mod task;
 mod utils;
-mod config_window;
-mod combobox;
 
 fn main() -> Result<(), ApplicationError> {
     Application::new(|cx| {
@@ -34,6 +34,9 @@ fn main() -> Result<(), ApplicationError> {
         cx.add_stylesheet(include_style!("src/style.css"))
             .expect("failed to load style");
 
+        cx.add_stylesheet(include_style!("src/light_theme.css"))
+            .expect("failed to load style");
+
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {
                 Button::new(cx, |cx| Label::new(cx, "Add Task"))
@@ -54,9 +57,9 @@ fn main() -> Result<(), ApplicationError> {
                     // let supported_output_formats = item.then(Task::supported_output_formats);
                     // let selected_output_format = item.then(Task::selected_output_format);
                     HStack::new(cx, |cx| {
-                        VStack::new(cx,|cx|{
+                        VStack::new(cx, |cx| {
                             Label::new(cx, input_path);
-                        Label::new(cx, output_path);
+                            Label::new(cx, output_path);
                         });
                         // ComboBox::new(cx, supported_output_formats, selected_output_format)
                         //     .on_select(move |cx, selected_format| {
@@ -66,13 +69,12 @@ fn main() -> Result<(), ApplicationError> {
                             cx.emit(AppEvent::ToggleConifgWindow(index));
                         });
                     });
-                    // TaskItemRow::new(cx, AppData::tasks.map_ref(move |tasks| &tasks[index]).get());
                 });
             });
 
             Binding::new(cx, AppData::show_config_window, |cx, is_show| {
                 if is_show.get(cx) {
-                   config_window::popup(cx);
+                    config_window::popup(cx);
                 }
             });
         })
