@@ -67,7 +67,7 @@ badge.error {
 /* BUTTON  */
 
 button {
-    corner-radius: 24px;
+    corner-radius: 8px;
     border: 1px #d2d2d2;
     background-color: #fdfdfd;
     transition: background-color 233ms;
@@ -245,7 +245,7 @@ button-group.vertical > :last-child {
 /* CHECKBOX */
 
 checkbox {
-    corner-radius: 2px;
+    corner-radius: 4px;
     border-width: 1px;
     border-color: #d2d2d2;
     background-color: #fdfdfd;
@@ -337,14 +337,14 @@ chip:disabled .icon {
 /* COMBOBOX */
 
 combobox {
-    corner-radius: 4px;
+    corner-radius: 12px;
     background-color: #fdfdfd;
 }
 
 combobox .title {
     border-width: 1px;
     border-color: #d2d2d2;
-    corner-radius: 4px;
+    corner-radius: 12px;
 }
 
 combobox > textbox > label.placeholder {
@@ -352,7 +352,7 @@ combobox > textbox > label.placeholder {
 }
 
 combobox popup {
-    corner-radius: 4px;
+    corner-radius: 12px;
     border-width: 1px;
     border-color: #d2d2d2;
     background-color: #fdfdfd;
@@ -614,7 +614,7 @@ progressbar:disabled .progressbar-bar {
 /* PICKLIST */
 
 picklist {
-    corner-radius: 4px;
+    corner-radius: 12px;
 }
 
 picklist:focus-visible {
@@ -664,9 +664,9 @@ picklist list.selectable list-item:focus-visible {
 
 popup {
     background-color: #ffffff;
-    corner-radius: 4px;
+    corner-radius: 12px;
     border: 1px #d2d2d2;
-    shadow: 0px 3px 12px #00000038;
+    shadow: 0px 4px 64px #00000038;
 }
 
 /* RADIOBUTTON */
@@ -982,16 +982,26 @@ tabbar list.selectable list-item:checked {
 
 /* TEXTBOX */
 textbox {
-    corner-radius: 4px;
+    corner-radius: 8px;
     border: 1px #d2d2d2;
     background-color: #fff;
+    transition: border-color 233ms;
+    transition: border-width 233ms;
+    transition: background-color 233ms;
+}
+
+textbox:hover {
+    border-color: #d2d2d2;
+    background-color: #f9f9f9;
     transition: border-color 233ms;
     transition: background-color 233ms;
 }
 
 textbox:checked {
     border-color: #51afef;
+    border-width: 2px;
     transition: border-color 233ms;
+    transition: border-width 233ms;
 }
 
 textbox:checked.caret {
