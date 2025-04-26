@@ -3,7 +3,12 @@ use std::{fs, path::Path};
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use vizia::prelude::*;
 
-use crate::{app_event::AppEvent, media_format::{Audio, MediaFormat, Video}, task::Task, utils::{convert_media, get_output_path}};
+use crate::{
+    app_event::AppEvent,
+    media_format::{Audio, MediaFormat, Video},
+    task::Task,
+    utils::{convert_media, get_output_path},
+};
 
 #[derive(Lens, Data, Clone)]
 pub struct AppData {
@@ -55,6 +60,7 @@ impl Model for AppData {
             AppEvent::RemoveAll => {
                 self.indices.clear();
                 self.tasks.clear();
+                self.show_config_window = false;
             }
             AppEvent::ChangeOutputFormat(index, selected_format) => {
                 if let Some(task) = self.tasks.get_mut(*index) {
