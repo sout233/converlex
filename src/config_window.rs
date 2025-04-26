@@ -26,14 +26,12 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                     Task {
                                         input_path: new_input.to_string(),
                                         output_path: output_path.get(cx).clone(),
-                                        done: is_done.get(cx).clone(),
+                                        done: is_done.get(cx),
                                         supported_output_formats: supported_output_formats
                                             .get(cx)
                                             .clone(),
-                                        selected_output_format: selected_output_format
-                                            .get(cx)
-                                            .clone(),
-                                        auto_rename: is_auto_rename.get(cx).clone(),
+                                        selected_output_format: selected_output_format.get(cx),
+                                        auto_rename: is_auto_rename.get(cx),
                                     },
                                 ));
                             },
@@ -50,14 +48,12 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                     Task {
                                         output_path: new_output.to_string(),
                                         input_path: input_path.get(cx).clone(),
-                                        done: is_done.get(cx).clone(),
+                                        done: is_done.get(cx),
                                         supported_output_formats: supported_output_formats
                                             .get(cx)
                                             .clone(),
-                                        selected_output_format: selected_output_format
-                                            .get(cx)
-                                            .clone(),
-                                        auto_rename: is_auto_rename.get(cx).clone(),
+                                        selected_output_format: selected_output_format.get(cx),
+                                        auto_rename: is_auto_rename.get(cx),
                                     },
                                 ));
                             })

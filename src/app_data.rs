@@ -82,7 +82,7 @@ impl Model for AppData {
                     let input_path = &task.input_path;
 
                     let output_format = &task.supported_output_formats[task.selected_output_format];
-                    let mut output_path = get_output_path(input_path, &output_format, true);
+                    let mut output_path = get_output_path(input_path, output_format, true);
 
                     if input_path == &output_path {
                         println!("输入输出路径相同，跳过任务：{}", input_path);
@@ -93,7 +93,7 @@ impl Model for AppData {
                         let overwrite = MessageDialog::new()
                             .set_level(MessageLevel::Warning)
                             .set_title("文件已存在")
-                            .set_description(&format!(
+                            .set_description(format!(
                                 "输出文件已存在，是否覆盖？\n\n源文件:\n{}\n输出文件:\n{}",
                                 input_path, output_path
                             ))
@@ -108,7 +108,7 @@ impl Model for AppData {
                                 }
                             }
                             MessageDialogResult::No => {
-                                output_path = get_output_path(input_path, &output_format, false)
+                                output_path = get_output_path(input_path, output_format, false)
                             }
                             _ => {}
                         }
