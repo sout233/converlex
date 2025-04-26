@@ -22,9 +22,9 @@ pub fn convert_media(input: &str, output: &str) -> Result<(), String> {
 }
 
 
-fn convert_media_with_progress<F>(input: &str, output: &str, mut on_progress: F) -> Result<(), String>
+pub fn convert_media_with_progress<F>(input: &str, output: &str, mut on_progress: F) -> Result<(), String>
 where
-    F: FnMut(f32), // 传入回调函数用于实时更新进度
+    F: FnMut(f32),
 {
     let ffmpeg_path = "./ffmpeg.exe";
 
@@ -68,6 +68,48 @@ where
         Err("转换失败".into())
     }
 }
+
+pub async fn convert_with_progress<F>(
+    input: &str,
+    output: &str,
+    mut on_progress: F,
+) -> Result<(), String>
+where
+    F: FnMut(f32) + Send + 'static,
+{
+    // 1. 准备进度回调器
+    let mut pcb = ProgressCallBacker::new();
+    pcb.total_duration = get_duration_us(input)
+        .map_err(|e| e.to_string())?;
+    // 取音频 time_base，若无，再去视频
+    if let Some(StreamInfo::Audio { time_base, .. }) =
+        find_audio_stream_info(input).map_err(|e| e.to_string())?
+    {
+        pcb.time_base = time_base;
+    }
+
+    // 2. 构造 FramePipeline，给音频流打上进度过滤
+    let pipeline = AVMediaType::AVMEDIA_TYPE_AUDIO
+        .into::<FramePipelineBuilder>()
+        .filter("progress", Box::new(ProgressCallBackFilter::new(Arc::new(pcb))));
+
+    // 3. 构建 FFmpegContext
+    let ctx = FfmpegContext::builder()
+        .input(input)
+        .output(Output::from(output).add_frame_pipeline(pipeline))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // 4. 启动并 await 完成
+    FfmpegScheduler::new(ctx)
+        .start()
+        .map_err(|e| e.to_string())?
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 fn parse_ffmpeg_time(time_str: &str) -> Result<f32, std::num::ParseFloatError> {
     let parts: Vec<&str> = time_str.split(':').collect();
     if parts.len() != 3 {
@@ -78,6 +120,7 @@ fn parse_ffmpeg_time(time_str: &str) -> Result<f32, std::num::ParseFloatError> {
     let seconds: f32 = parts[2].parse()?;
     Ok(hours * 3600.0 + minutes * 60.0 + seconds)
 }
+
 fn get_media_duration(input: &str) -> Result<f32, String> {
     let output = Command::new("./ffmpeg.exe")
         .args(["-i", input])

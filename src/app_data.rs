@@ -7,7 +7,7 @@ use crate::{
     app_event::AppEvent,
     media_format::{Audio, MediaFormat, Video},
     task::Task,
-    utils::{convert_media, get_output_path},
+    utils::{self, get_output_path},
 };
 
 #[derive(Lens, Data, Clone)]
@@ -114,10 +114,21 @@ impl Model for AppData {
                         }
                     }
 
-                    match convert_media(input_path, &output_path) {
-                        Ok(_) => println!("转换成功：{} -> {}", input_path, output_path),
-                        Err(e) => println!("任务转换失败：{}，错误：{}", input_path, e),
-                    }
+                    let input_path_clone = input_path.clone();
+                    let callback = move |progress: f32| {
+                        println!("{:?} 转换进度: {:.2}%", input_path_clone, progress * 100.0);
+                    };
+
+                    tokio::spawn(async move {
+                        let cb = move |p: f32| {
+                            // e.g. cx.emit(AppEvent::UpdateProgress(idx, p));
+                            println!("{} => {:.1}%", input, p * 100.0);
+                        };
+                        match crate::utils::convert_with_progress(&input, &output, cb).await {
+                            Ok(_) => println!("Done: {} → {}", input, output),
+                            Err(e) => eprintln!("Error: {}", e),
+                        }
+                    });
                 }
             }
             AppEvent::ToggleConifgWindow(idx) => {
