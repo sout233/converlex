@@ -1,0 +1,5 @@
+{
+  "name": "converlex",
+  "version": "1.0",
+  "dependencies": ["ffmpeg"]
+}
