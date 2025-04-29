@@ -1,5 +1,5 @@
-fn convert(){
-     let tasks = self.tasks.clone();
+fn convert() {
+    let tasks = self.tasks.clone();
     let indices = self.indices.clone();
     for index in indices {
         let task = &tasks[index];
