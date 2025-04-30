@@ -66,6 +66,10 @@ label.count {
   border-color: rgb(0 0 0 / 10%);
 }
 
+.task-list scroll-content{
+  vertical-gap: 20px;
+}
+
 /* list.selectable list-item {
   gap: 40px;
 }

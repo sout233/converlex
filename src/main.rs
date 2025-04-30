@@ -60,7 +60,7 @@ async fn main() -> Result<(), ApplicationError> {
                     })
                     .class("task-row");
 
-                    HStack::new(cx, |_| {}).height(Pixels(10.0));
+                    // HStack::new(cx, |_| {}).height(Pixels(10.0));
                 });
             })
             .class("task-list");

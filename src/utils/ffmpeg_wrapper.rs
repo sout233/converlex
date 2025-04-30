@@ -1,6 +1,6 @@
+use futures_util::future;
 use std::path::PathBuf;
 use std::process::Stdio;
-use futures_util::future;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
@@ -76,7 +76,11 @@ impl FfmpegCommandBuilder {
         let input = self.input.ok_or("Missing input path")?;
         let output = self.output.ok_or("Missing output path")?;
 
-        let mut args = vec!["-y".into(), "-i".into(), input.to_string_lossy().into_owned()];
+        let mut args = vec![
+            "-y".into(),
+            "-i".into(),
+            input.to_string_lossy().into_owned(),
+        ];
 
         if let Some(b) = self.video_bitrate {
             args.push("-b:v".into());
@@ -169,6 +173,7 @@ pub async fn run_batch(
                         eprintln!("[Task {id}] ❌ Error: {:?}", e);
                     } else {
                         let _ = tx_clone.send(ProgressMsg::Done { task_id: id });
+                        println!("[Task {id}] ✅ Task completed.");
                     }
                 }
                 Err(e) => {
@@ -192,7 +197,7 @@ where
 {
     let mut cmd = Command::new("ffmpeg");
     cmd.args(&args)
-        .stderr(Stdio::piped())  // FFmpeg 进度信息通常输出在 stderr
+        .stderr(Stdio::piped()) // FFmpeg 进度信息通常输出在 stderr
         .stdout(Stdio::null())
         .stdin(Stdio::null());
 
@@ -205,6 +210,7 @@ where
     let mut duration_secs: Option<f32> = None;
 
     while let Some(line) = lines.next_line().await? {
+        // println!("[Task {id}] {}", line);
         if line.contains("Duration:") {
             // 提取 total 时长
             if let Some(dur) = parse_duration(&line) {
@@ -215,6 +221,7 @@ where
             if let Some(current_time) = parse_progress_time(&line) {
                 if let Some(total) = duration_secs {
                     let ratio = (current_time / total).min(1.0);
+                    println!("[Task {id}] ⏳ Progress: {:.2}%", ratio * 100.0);
                     progress_cb(ratio);
                 }
             }
@@ -227,7 +234,9 @@ where
     }
 
     Ok(())
-}fn parse_duration(line: &str) -> Option<f32> {
+}
+
+fn parse_duration(line: &str) -> Option<f32> {
     let start = line.find("Duration: ")? + 10;
     let end = line[start..].find(',')? + start;
     let time_str = &line[start..end];

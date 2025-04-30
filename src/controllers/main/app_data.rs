@@ -1,6 +1,8 @@
-use std::{fs, path::Path, sync::{Arc, Mutex}};
+use core::task;
+use std::{fs, path::Path, sync::Arc};
 
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
+use tokio::sync::{Mutex, mpsc::UnboundedReceiver};
 use vizia::prelude::*;
 
 use crate::{
@@ -42,14 +44,13 @@ impl Model for AppData {
                     }
                 };
 
-                let arc_formats=
-                    MediaFormat::get_supported_output_formats(
-                        // TODO: 当没有找到格式时，在前端报错
-                        &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
-                    )
-                    .into_iter()
-                    .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
-                    .collect();
+                let arc_formats = MediaFormat::get_supported_output_formats(
+                    // TODO: 当没有找到格式时，在前端报错
+                    &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
+                )
+                .into_iter()
+                .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
+                .collect();
 
                 self.tasks.push(Task {
                     input_path: final_name.clone(),
@@ -155,7 +156,6 @@ impl Model for AppData {
                     })
                     .collect();
 
-
                 tokio::spawn(async move {
                     // 🧵 后台并发运行
                     if let Err(e) = ffmpeg_wrapper::run_batch(tasks, tx).await {
@@ -163,19 +163,22 @@ impl Model for AppData {
                     }
                 });
 
-                let event_proxy = cx.get_proxy();
+                let mut event_proxy = cx.get_proxy();
 
-
-                let rx_clone = Arc::clone(&rx);
+                let rx_clone = rx.clone();
                 tokio::spawn(async move {
-                    let mut rx = rx_clone.lock().unwrap();
+                    let mut rx = rx_clone.lock().await;
                     while let Some(msg) = rx.recv().await {
                         match msg {
                             ProgressMsg::Progress { task_id, progress } => {
-                                event_proxy.emit(AppEvent::UpdateProgress(task_id, progress));
+                                let _ = event_proxy.emit(AppEvent::UpdateProgress(task_id, progress)).map_err(|e| {
+                                    eprintln!("❗ Error emitting PROGRESS event: {}", e);
+                                });
                             }
                             ProgressMsg::Done { task_id } => {
-                                event_proxy.emit(AppEvent::MarkDone(task_id));
+                                let _ = event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
+                                    eprintln!("❗ Error emitting COMPLETE event: {}", e);
+                                });
                             }
                         }
                     }
@@ -210,6 +213,17 @@ impl Model for AppData {
                 self.show_config_window = false;
                 self.configuring_index = None;
             }
+            AppEvent::UpdateProgress(idx, new_progress) => {
+                if let Some(task) = self.tasks.get_mut(*idx) {
+                    task.progress = *new_progress;
+                }
+            },
+            AppEvent::MarkDone(idx) => {
+                if let Some(task) = self.tasks.get_mut(*idx) {
+                    task.done = true;
+                    task.progress = 1.0;
+                }
+            },
         });
     }
 }
