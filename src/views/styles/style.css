@@ -43,9 +43,22 @@ label.count {
   padding: 4px;
 }
 
-.auto-rename-checkbox{
+.auto-rename-checkbox {
   width: auto;
   /* background-color: red; */
   padding-left: 10px;
   alignment: center;
+}
+
+.task-list {
+  padding: 10px;
+  gap: 12px;
+  background-color: aqua;
+}
+
+.task-row {
+  height: 48px;
+  background-color: red;
+  alignment: left;
+  padding: 4px;
 }

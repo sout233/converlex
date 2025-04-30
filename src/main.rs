@@ -45,23 +45,18 @@ async fn main() -> Result<(), ApplicationError> {
                     let item = AppData::tasks.map_ref(move |tasks| &tasks[index]);
                     let input_path = item.then(Task::input_path);
                     let output_path = item.then(Task::output_path);
-                    // let supported_output_formats = item.then(Task::supported_output_formats);
-                    // let selected_output_format = item.then(Task::selected_output_format);
                     HStack::new(cx, |cx| {
                         VStack::new(cx, |cx| {
                             Label::new(cx, input_path);
                             Label::new(cx, output_path);
-                        });
-                        // ComboBox::new(cx, supported_output_formats, selected_output_format)
-                        //     .on_select(move |cx, selected_format| {
-                        //         cx.emit(AppEvent::ChangeOutputFormat(index, selected_format));
-                        //     });
+                        }).alignment(Alignment::Left);
+
                         Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
                             cx.emit(AppEvent::ToggleConifgWindow(index));
                         });
-                    });
+                    }).class("task-row");
                 });
-            });
+            }).class("task-list");
 
             Binding::new(cx, AppData::show_config_window, |cx, is_show| {
                 if is_show.get(cx) {
