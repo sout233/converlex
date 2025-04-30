@@ -10,4 +10,6 @@ pub enum AppEvent {
     RemoveAll,
     ToggleConifgWindow(usize),
     ConfigWindowClosing,
+    UpdateProgress(usize, f32),
+    MarkDone(usize),
 }

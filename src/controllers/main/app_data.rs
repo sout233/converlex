@@ -1,16 +1,12 @@
-use std::{fs, path::Path, sync::Arc};
+use std::{fs, path::Path, sync::{Arc, Mutex}};
 
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use vizia::prelude::*;
 
 use crate::{
-    models::{
-        convertible_format::ConvertibleFormat,
-        media_format::MediaFormat,
-        task::Task,
-    },
+    models::{convertible_format::ConvertibleFormat, media_format::MediaFormat, task::Task},
     utils::{
-        ffmpeg_wrapper::{self, FfmpegCommandBuilder},
+        ffmpeg_wrapper::{self, FfmpegCommandBuilder, ProgressMsg},
         fs::get_file_extension,
         utils::get_output_path,
     },
@@ -27,7 +23,7 @@ pub struct AppData {
 }
 
 impl Model for AppData {
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|app_event: &AppEvent, _| match app_event {
             AppEvent::AddTask(name) => {
                 let final_name = match name {
@@ -46,13 +42,14 @@ impl Model for AppData {
                     }
                 };
 
-                let arc_formats: Vec<Arc<dyn ConvertibleFormat>> = MediaFormat::get_supported_output_formats(
-                    // TODO: 当没有找到格式时，在前端报错
-                    &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
-                )
-                .into_iter()
-                .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
-                .collect();
+                let arc_formats=
+                    MediaFormat::get_supported_output_formats(
+                        // TODO: 当没有找到格式时，在前端报错
+                        &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
+                    )
+                    .into_iter()
+                    .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
+                    .collect();
 
                 self.tasks.push(Task {
                     input_path: final_name.clone(),
@@ -61,6 +58,7 @@ impl Model for AppData {
                     done: false,
                     selected_output_format: 0,
                     auto_rename: true,
+                    progress: 0.0,
                 });
                 self.indices.push(self.tasks.len() - 1);
             }
@@ -88,7 +86,8 @@ impl Model for AppData {
 
                     let input_path = &task.input_path;
 
-                    let output_format = task.supported_output_formats[task.selected_output_format].as_any();
+                    let output_format =
+                        task.supported_output_formats[task.selected_output_format].as_any();
                     let mut output_path = get_output_path(input_path, output_format, true);
 
                     if input_path == &output_path {
@@ -139,6 +138,9 @@ impl Model for AppData {
                     // });
                 }
 
+                let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ProgressMsg>();
+                let rx = Arc::new(Mutex::new(rx));
+
                 let tasks: Vec<(usize, FfmpegCommandBuilder)> = self
                     .tasks
                     .iter()
@@ -153,10 +155,29 @@ impl Model for AppData {
                     })
                     .collect();
 
+
                 tokio::spawn(async move {
-                    match ffmpeg_wrapper::run_batch(tasks).await {
-                        Ok(_) => println!("全部任务已完成"),
-                        Err(e) => eprintln!("任务执行失败：{}", e),
+                    // 🧵 后台并发运行
+                    if let Err(e) = ffmpeg_wrapper::run_batch(tasks, tx).await {
+                        eprintln!("任务失败：{}", e);
+                    }
+                });
+
+                let event_proxy = cx.get_proxy();
+
+
+                let rx_clone = Arc::clone(&rx);
+                tokio::spawn(async move {
+                    let mut rx = rx_clone.lock().unwrap();
+                    while let Some(msg) = rx.recv().await {
+                        match msg {
+                            ProgressMsg::Progress { task_id, progress } => {
+                                event_proxy.emit(AppEvent::UpdateProgress(task_id, progress));
+                            }
+                            ProgressMsg::Done { task_id } => {
+                                event_proxy.emit(AppEvent::MarkDone(task_id));
+                            }
+                        }
                     }
                 });
             }

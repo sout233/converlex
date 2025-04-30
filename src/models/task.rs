@@ -13,4 +13,5 @@ pub struct Task {
     pub supported_output_formats: Vec<Arc<dyn ConvertibleFormat>>,
     pub selected_output_format: usize,
     pub auto_rename: bool,
+    pub progress: f32,
 }

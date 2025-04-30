@@ -35,6 +35,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                             .clone(),
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
+                                        progress: 0.0,
                                     },
                                 ));
                             },
@@ -57,6 +58,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                             .clone(),
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
+                                        progress: 0.0,
                                     },
                                 ));
                             })

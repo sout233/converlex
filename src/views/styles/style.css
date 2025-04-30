@@ -51,14 +51,25 @@ label.count {
 }
 
 .task-list {
-  padding: 10px;
   gap: 12px;
-  background-color: aqua;
+  /* background-color: aqua; */
 }
 
 .task-row {
-  height: 48px;
-  background-color: red;
+  height: 60px;
+  /* background-color: red; */
   alignment: left;
-  padding: 4px;
+  padding: 10px;
+  /* shadow: 0px 2px 20px rgb(0 0 0 / 10%); */
+  corner-radius: 12px;
+  border-width: 1px;
+  border-color: rgb(0 0 0 / 10%);
 }
+
+/* list.selectable list-item {
+  gap: 40px;
+}
+
+.task-list scrollview {
+  vertical-gap: 10px;
+} */

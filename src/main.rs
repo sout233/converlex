@@ -45,18 +45,25 @@ async fn main() -> Result<(), ApplicationError> {
                     let item = AppData::tasks.map_ref(move |tasks| &tasks[index]);
                     let input_path = item.then(Task::input_path);
                     let output_path = item.then(Task::output_path);
+                    let progress = item.then(Task::progress);
                     HStack::new(cx, |cx| {
                         VStack::new(cx, |cx| {
                             Label::new(cx, input_path);
                             Label::new(cx, output_path);
-                        }).alignment(Alignment::Left);
+                            ProgressBar::new(cx,progress,Orientation::Horizontal);
+                        })
+                        .alignment(Alignment::Left);
 
                         Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
                             cx.emit(AppEvent::ToggleConifgWindow(index));
                         });
-                    }).class("task-row");
+                    })
+                    .class("task-row");
+
+                    HStack::new(cx, |_| {}).height(Pixels(10.0));
                 });
-            }).class("task-list");
+            })
+            .class("task-list");
 
             Binding::new(cx, AppData::show_config_window, |cx, is_show| {
                 if is_show.get(cx) {
