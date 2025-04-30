@@ -1,28 +1,34 @@
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc};
 
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use vizia::prelude::*;
 
 use crate::{
-    app_event::AppEvent,
-    media_format::{Audio, MediaFormat, Video},
-    task::Task,
-    utils::{self, get_output_path},
+    models::{
+        convertible_format::ConvertibleFormat,
+        media_format::MediaFormat,
+        task::Task,
+    },
+    utils::{
+        ffmpeg_wrapper::{self, FfmpegCommandBuilder},
+        fs::get_file_extension,
+        utils::get_output_path,
+    },
 };
+
+use super::app_event::AppEvent;
 
 #[derive(Lens, Data, Clone)]
 pub struct AppData {
     pub indices: Vec<usize>,
     pub tasks: Vec<Task>,
-    pub format_to_list: Vec<MediaFormat>,
-    pub selected_format: usize,
     pub show_config_window: bool,
     pub configuring_index: Option<usize>,
 }
 
 impl Model for AppData {
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
-        event.map(|app_event, _| match app_event {
+        event.map(|app_event: &AppEvent, _| match app_event {
             AppEvent::AddTask(name) => {
                 let final_name = match name {
                     Some(n) => n.clone(),
@@ -40,17 +46,18 @@ impl Model for AppData {
                     }
                 };
 
+                let arc_formats: Vec<Arc<dyn ConvertibleFormat>> = MediaFormat::get_supported_output_formats(
+                    // TODO: 当没有找到格式时，在前端报错
+                    &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
+                )
+                .into_iter()
+                .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
+                .collect();
+
                 self.tasks.push(Task {
                     input_path: final_name.clone(),
                     output_path: get_output_path(&final_name, &MediaFormat::default(), false),
-                    supported_output_formats: vec![
-                        MediaFormat::Audio(Audio::Mp3),
-                        MediaFormat::Audio(Audio::Wav),
-                        MediaFormat::Audio(Audio::Flac),
-                        MediaFormat::Video(Video::Mp4),
-                        MediaFormat::Video(Video::Mkv),
-                        MediaFormat::Video(Video::Avi),
-                    ],
+                    supported_output_formats: arc_formats,
                     done: false,
                     selected_output_format: 0,
                     auto_rename: true,
@@ -66,7 +73,7 @@ impl Model for AppData {
                 if let Some(task) = self.tasks.get_mut(*index) {
                     task.selected_output_format = *selected_format;
 
-                    let format = &task.supported_output_formats[*selected_format];
+                    let format = &*task.supported_output_formats[*selected_format];
                     let new_output_path = get_output_path(&task.input_path, format, false);
 
                     task.output_path = new_output_path;
@@ -81,7 +88,7 @@ impl Model for AppData {
 
                     let input_path = &task.input_path;
 
-                    let output_format = &task.supported_output_formats[task.selected_output_format];
+                    let output_format = task.supported_output_formats[task.selected_output_format].as_any();
                     let mut output_path = get_output_path(input_path, output_format, true);
 
                     if input_path == &output_path {
@@ -108,7 +115,8 @@ impl Model for AppData {
                                 }
                             }
                             MessageDialogResult::No => {
-                                output_path = get_output_path(input_path, output_format, false)
+                                output_path = get_output_path(input_path, output_format, false);
+                                // *task.output_path = output_path.clone();
                             }
                             _ => {}
                         }
@@ -119,17 +127,38 @@ impl Model for AppData {
                         println!("{:?} 转换进度: {:.2}%", input_path_clone, progress * 100.0);
                     };
 
-                    tokio::spawn(async move {
-                        let cb = move |p: f32| {
-                            // e.g. cx.emit(AppEvent::UpdateProgress(idx, p));
-                            println!("{} => {:.1}%", input, p * 100.0);
-                        };
-                        match crate::utils::convert_with_progress(&input, &output, cb).await {
-                            Ok(_) => println!("Done: {} → {}", input, output),
-                            Err(e) => eprintln!("Error: {}", e),
-                        }
-                    });
+                    // tokio::spawn(async move {
+                    //     let cb = move |p: f32| {
+                    //         // e.g. cx.emit(AppEvent::UpdateProgress(idx, p));
+                    //         println!("{} => {:.1}%", input_path_clone.clone(), p * 100.0);
+                    //     };
+                    //     match crate::utils::utils::convert_media_with_progress(&input_path_clone, &output_path, cb) {
+                    //         Ok(_) => println!("Done: {} → {}", input_path_clone, output_path),
+                    //         Err(e) => eprintln!("Error: {}", e),
+                    //     }
+                    // });
                 }
+
+                let tasks: Vec<(usize, FfmpegCommandBuilder)> = self
+                    .tasks
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, task)| {
+                        (
+                            idx,
+                            FfmpegCommandBuilder::new()
+                                .input(task.input_path.clone())
+                                .output(task.output_path.clone()),
+                        )
+                    })
+                    .collect();
+
+                tokio::spawn(async move {
+                    match ffmpeg_wrapper::run_batch(tasks).await {
+                        Ok(_) => println!("全部任务已完成"),
+                        Err(e) => eprintln!("任务执行失败：{}", e),
+                    }
+                });
             }
             AppEvent::ToggleConifgWindow(idx) => {
                 self.show_config_window = !self.show_config_window;
@@ -141,7 +170,7 @@ impl Model for AppData {
                     if task.auto_rename {
                         task.output_path = get_output_path(
                             &task.input_path,
-                            &task.supported_output_formats[task.selected_output_format],
+                            task.supported_output_formats[task.selected_output_format].as_any(),
                             false,
                         );
                     }
@@ -155,6 +184,10 @@ impl Model for AppData {
                     existing_task.auto_rename = task.auto_rename;
                     existing_task.selected_output_format = task.selected_output_format;
                 }
+            }
+            AppEvent::ConfigWindowClosing => {
+                self.show_config_window = false;
+                self.configuring_index = None;
             }
         });
     }

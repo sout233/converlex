@@ -1,40 +1,31 @@
-use app_data::AppData;
-use app_event::AppEvent;
-use media_format::{Audio, MediaFormat, Video};
-use task::Task;
+use controllers::main::{app_data::AppData, app_event::AppEvent};
+use models::{
+    media_format::{Audio, MediaFormat, Video},
+    task::Task,
+};
+use views::windows::config_window;
 use vizia::prelude::*;
 
-mod app_data;
-mod app_event;
-mod combobox;
-mod config_window;
-mod media_format;
-mod task;
+mod controllers;
+mod models;
 mod utils;
+mod views;
 
-fn main() -> Result<(), ApplicationError> {
+#[tokio::main]
+async fn main() -> Result<(), ApplicationError> {
     Application::new(|cx| {
         AppData {
             indices: vec![],
             tasks: vec![],
-            format_to_list: vec![
-                MediaFormat::Audio(Audio::Mp3),
-                MediaFormat::Audio(Audio::Wav),
-                MediaFormat::Audio(Audio::Flac),
-                MediaFormat::Video(Video::Mp4),
-                MediaFormat::Video(Video::Mkv),
-                MediaFormat::Video(Video::Avi),
-            ],
-            selected_format: 0,
             show_config_window: false,
             configuring_index: None,
         }
         .build(cx);
 
-        cx.add_stylesheet(include_style!("src/style.css"))
+        cx.add_stylesheet(include_style!("src/views/styles/light_theme.css"))
             .expect("failed to load style");
 
-        cx.add_stylesheet(include_style!("src/light_theme.css"))
+        cx.add_stylesheet(include_style!("src/views/styles/style.css"))
             .expect("failed to load style");
 
         VStack::new(cx, |cx| {

@@ -1,4 +1,4 @@
-use crate::task::Task;
+use crate::models::task::Task;
 
 pub enum AppEvent {
     AddTask(Option<String>),
@@ -9,4 +9,5 @@ pub enum AppEvent {
     StartConvert,
     RemoveAll,
     ToggleConifgWindow(usize),
+    ConfigWindowClosing,
 }

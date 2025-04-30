@@ -1,6 +1,9 @@
 use vizia::prelude::*;
 
-use crate::{app_data::AppData, app_event::AppEvent, task::Task};
+use crate::{
+    controllers::main::app_data::AppData, controllers::main::app_event::AppEvent,
+    models::task::Task,
+};
 
 pub fn popup(cx: &mut Context) -> Handle<Window> {
     Window::popup(cx, true, |cx| {
@@ -97,4 +100,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
         });
     })
     .title("Converlex - Config")
+    .on_close(|cx| {
+        cx.emit(AppEvent::ConfigWindowClosing);
+    })
 }

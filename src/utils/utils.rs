@@ -1,6 +1,7 @@
 use std::{io::{BufRead, BufReader}, path::Path, process::{Command, Stdio}};
 
-use crate::media_format::MediaFormat;
+use crate::models::convertible_format::ConvertibleFormat;
+
 
 
 pub fn convert_media(input: &str, output: &str) -> Result<(), String> {
@@ -69,46 +70,6 @@ where
     }
 }
 
-pub async fn convert_with_progress<F>(
-    input: &str,
-    output: &str,
-    mut on_progress: F,
-) -> Result<(), String>
-where
-    F: FnMut(f32) + Send + 'static,
-{
-    // 1. 准备进度回调器
-    let mut pcb = ProgressCallBacker::new();
-    pcb.total_duration = get_duration_us(input)
-        .map_err(|e| e.to_string())?;
-    // 取音频 time_base，若无，再去视频
-    if let Some(StreamInfo::Audio { time_base, .. }) =
-        find_audio_stream_info(input).map_err(|e| e.to_string())?
-    {
-        pcb.time_base = time_base;
-    }
-
-    // 2. 构造 FramePipeline，给音频流打上进度过滤
-    let pipeline = AVMediaType::AVMEDIA_TYPE_AUDIO
-        .into::<FramePipelineBuilder>()
-        .filter("progress", Box::new(ProgressCallBackFilter::new(Arc::new(pcb))));
-
-    // 3. 构建 FFmpegContext
-    let ctx = FfmpegContext::builder()
-        .input(input)
-        .output(Output::from(output).add_frame_pipeline(pipeline))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    // 4. 启动并 await 完成
-    FfmpegScheduler::new(ctx)
-        .start()
-        .map_err(|e| e.to_string())?
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
 
 fn parse_ffmpeg_time(time_str: &str) -> Result<f32, std::num::ParseFloatError> {
     let parts: Vec<&str> = time_str.split(':').collect();
@@ -143,17 +104,17 @@ fn get_media_duration(input: &str) -> Result<f32, String> {
 }
 
 
-pub fn get_output_path(input_path: &str, new_ext: &MediaFormat, overwrite: bool) -> String {
+pub fn get_output_path(input_path: &str, new_format: &dyn ConvertibleFormat, overwrite: bool) -> String {
     let path = Path::new(input_path);
     let stem = path.file_stem().unwrap_or_default().to_string_lossy();
     let parent = path.parent().unwrap_or_else(|| Path::new(""));
 
-    let mut output_path = parent.join(format!("{}_converted.{}", stem, new_ext));
+    let mut output_path = parent.join(format!("{}_converted.{}", stem, new_format.get_ext()));
     let mut count = 1;
 
     if !overwrite {
         while output_path.exists() {
-            output_path = parent.join(format!("{}_converted_{}.{}", stem, count, new_ext));
+            output_path = parent.join(format!("{}_converted_{}.{}", stem, count, new_format.get_ext()));
             count += 1;
         }
     }

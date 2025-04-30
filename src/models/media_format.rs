@@ -1,10 +1,26 @@
 use std::fmt::Display;
 use vizia::prelude::*;
 
+use super::convertible_format::ConvertibleFormat;
+
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum MediaFormat {
     Audio(Audio),
     Video(Video),
+}
+
+impl MediaFormat {
+    pub fn new(extension: &str) -> Option<Self> {
+        match extension {
+            "mp4" => Some(MediaFormat::Video(Video::Mp4)),
+            "mkv" => Some(MediaFormat::Video(Video::Mkv)),
+            "avi" => Some(MediaFormat::Video(Video::Avi)),
+            "mp3" => Some(MediaFormat::Audio(Audio::Mp3)),
+            "wav" => Some(MediaFormat::Audio(Audio::Wav)),
+            "flac" => Some(MediaFormat::Audio(Audio::Flac)),
+            _ => None,
+        }
+    }
 }
 
 impl Default for MediaFormat {
@@ -22,6 +38,42 @@ impl Display for MediaFormat {
     }
 }
 
+impl ConvertibleFormat for MediaFormat{
+    fn get_supported_output_formats(&self) -> Vec<Box<dyn ConvertibleFormat>> {
+        match self {
+            MediaFormat::Audio(_) => vec![
+                Box::new(MediaFormat::Audio(Audio::Mp3)),
+                Box::new(MediaFormat::Audio(Audio::Wav)),
+                Box::new(MediaFormat::Audio(Audio::Flac)),
+                Box::new(MediaFormat::Video(Video::Mp4)),
+                Box::new(MediaFormat::Video(Video::Mkv)),
+                Box::new(MediaFormat::Video(Video::Avi)),
+            ],
+            MediaFormat::Video(_) => vec![
+                Box::new(MediaFormat::Video(Video::Mp4)),
+                Box::new(MediaFormat::Video(Video::Mkv)),
+                Box::new(MediaFormat::Video(Video::Avi)),
+                Box::new(MediaFormat::Audio(Audio::Mp3)),
+                Box::new(MediaFormat::Audio(Audio::Wav)),
+                Box::new(MediaFormat::Audio(Audio::Flac)),
+            ],
+        }
+    }
+
+    fn as_any(&self) -> &dyn ConvertibleFormat {
+        match self {
+            MediaFormat::Audio(_) => self,
+            MediaFormat::Video(_) => self,
+        }
+    }
+    
+    fn get_ext(&self) -> String {
+        match self {
+            MediaFormat::Audio(audio) => audio.to_string(),
+            MediaFormat::Video(video) => video.to_string(),
+        }
+    }
+}
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum Video {
