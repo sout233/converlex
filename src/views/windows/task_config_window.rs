@@ -17,6 +17,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                 let selected_output_format = item.then(Task::selected_output_format);
                 let is_auto_rename = item.then(Task::auto_rename);
                 let is_done = item.then(Task::done);
+                let task_type = item.then(Task::task_type);
 
                 VStack::new(cx, |cx| {
                     HStack::new(cx, |cx| {
@@ -36,6 +37,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
                                         progress: 0.0,
+                                        task_type:task_type.get(cx).clone(),
                                     },
                                 ));
                             },
@@ -59,6 +61,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
                                         progress: 0.0,
+                                        task_type:task_type.get(cx).clone(),
                                     },
                                 ));
                             })

@@ -13,3 +13,9 @@ impl Display for dyn ConvertibleFormat {
         write!(f, "{}", self.get_ext())
     }
 }
+
+impl std::fmt::Debug for dyn ConvertibleFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.get_ext())
+    }
+}

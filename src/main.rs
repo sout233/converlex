@@ -1,9 +1,6 @@
 use controllers::main::{app_data::AppData, app_event::AppEvent};
-use models::{
-    media_format::{Audio, MediaFormat, Video},
-    task::Task,
-};
-use views::windows::config_window;
+use models::{app_settings::AppSettings, task::Task};
+use views::windows::task_config_window;
 use vizia::prelude::*;
 
 mod controllers;
@@ -11,14 +8,19 @@ mod models;
 mod utils;
 mod views;
 
+
 #[tokio::main]
 async fn main() -> Result<(), ApplicationError> {
-    Application::new(|cx| {
+    let app_settings = AppSettings::omg_default().await;
+
+    Application::new(move |cx| {
         AppData {
             indices: vec![],
             tasks: vec![],
             show_config_window: false,
             configuring_index: None,
+            settings: app_settings.clone(),
+            show_settings_window: false,
         }
         .build(cx);
 
@@ -36,6 +38,9 @@ async fn main() -> Result<(), ApplicationError> {
                     .on_press(|ex| ex.emit(AppEvent::RemoveAll));
                 Button::new(cx, |cx| Label::new(cx, "Start Convert"))
                     .on_press(|ex| ex.emit(AppEvent::StartConvert));
+
+                Button::new(cx, |cx| Label::new(cx, "Settings"))
+                    .on_press(|ex| ex.emit(AppEvent::ToggleSettingsWindow));
             })
             .class("menu-btns-row");
 
@@ -67,7 +72,13 @@ async fn main() -> Result<(), ApplicationError> {
 
             Binding::new(cx, AppData::show_config_window, |cx, is_show| {
                 if is_show.get(cx) {
-                    config_window::popup(cx);
+                    task_config_window::popup(cx);
+                }
+            });
+
+            Binding::new(cx, AppData::show_settings_window, |cx, is_show| {
+                if is_show.get(cx) {
+                    views::windows::setting_window::new(cx);
                 }
             });
         })

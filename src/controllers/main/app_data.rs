@@ -1,14 +1,18 @@
-use core::task;
 use std::{fs, path::Path, sync::Arc};
 
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
-use tokio::sync::{Mutex, mpsc::UnboundedReceiver};
+use tokio::sync::Mutex;
 use vizia::prelude::*;
 
 use crate::{
-    models::{convertible_format::ConvertibleFormat, media_format::MediaFormat, task::Task},
+    err_msgbox,
+    models::{
+        app_settings::AppSettings, convertible_format::ConvertibleFormat,
+        media_format::MediaFormat, task::Task, task_type::TaskType,
+    },
+    unwrap_or_msgbox,
     utils::{
-        ffmpeg_wrapper::{self, FfmpegCommandBuilder, ProgressMsg},
+        ffmpeg_wrapper::{self, FfmpegTask, ProgressMsg},
         fs::get_file_extension,
         utils::get_output_path,
     },
@@ -22,6 +26,8 @@ pub struct AppData {
     pub tasks: Vec<Task>,
     pub show_config_window: bool,
     pub configuring_index: Option<usize>,
+    pub settings: AppSettings,
+    pub show_settings_window: bool,
 }
 
 impl Model for AppData {
@@ -60,6 +66,7 @@ impl Model for AppData {
                     selected_output_format: 0,
                     auto_rename: true,
                     progress: 0.0,
+                    task_type: TaskType::Ffmpeg,
                 });
                 self.indices.push(self.tasks.len() - 1);
             }
@@ -142,14 +149,19 @@ impl Model for AppData {
                 let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ProgressMsg>();
                 let rx = Arc::new(Mutex::new(rx));
 
-                let tasks: Vec<(usize, FfmpegCommandBuilder)> = self
+                let ffmpeg_entry = unwrap_or_msgbox!(
+                    &self.settings.ffmpeg_entry,
+                    "ffmpeg.exe 未找到，请在设置中配置"
+                );
+
+                let tasks: Vec<(usize, FfmpegTask)> = self
                     .tasks
                     .iter()
                     .enumerate()
                     .map(|(idx, task)| {
                         (
                             idx,
-                            FfmpegCommandBuilder::new()
+                            FfmpegTask::new(ffmpeg_entry.clone())
                                 .input(task.input_path.clone())
                                 .output(task.output_path.clone()),
                         )
@@ -171,14 +183,24 @@ impl Model for AppData {
                     while let Some(msg) = rx.recv().await {
                         match msg {
                             ProgressMsg::Progress { task_id, progress } => {
-                                let _ = event_proxy.emit(AppEvent::UpdateProgress(task_id, progress)).map_err(|e| {
-                                    eprintln!("❗ Error emitting PROGRESS event: {}", e);
-                                });
+                                let _ = event_proxy
+                                    .emit(AppEvent::UpdateProgress(task_id, progress))
+                                    .map_err(|e| {
+                                        eprintln!("❗ Error emitting PROGRESS event: {}", e);
+                                    });
                             }
                             ProgressMsg::Done { task_id } => {
-                                let _ = event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
-                                    eprintln!("❗ Error emitting COMPLETE event: {}", e);
-                                });
+                                let _ =
+                                    event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
+                                        eprintln!("❗ Error emitting COMPLETE event: {}", e);
+                                    });
+                            }
+                            ProgressMsg::Error { task_id, error } => {
+                                let _ =
+                                    event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
+                                        eprintln!("❗ Error emitting ERROR event: {}", e);
+                                    });
+                                err_msgbox!(format!("Task {task_id} failed\nErr: {error}"))
                             }
                         }
                     }
@@ -217,12 +239,23 @@ impl Model for AppData {
                 if let Some(task) = self.tasks.get_mut(*idx) {
                     task.progress = *new_progress;
                 }
-            },
+            }
             AppEvent::MarkDone(idx) => {
                 if let Some(task) = self.tasks.get_mut(*idx) {
                     task.done = true;
                     task.progress = 1.0;
                 }
+            }
+            AppEvent::UpdateAppSettings(f) => {
+                unimplemented!();
+                // f(&mut self.settings);
+                println!("✅ 更新设置: {:?}", self.settings);
+            }
+            AppEvent::ToggleSettingsWindow => {
+                self.show_settings_window = !self.show_settings_window;
+            }
+            AppEvent::UpdateFfmpegEntry(app_settings) => {
+                self.settings.ffmpeg_entry = app_settings.clone();
             },
         });
     }

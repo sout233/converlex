@@ -1,12 +1,16 @@
 use futures_util::future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::str::FromStr;
 use tokio::process::Command;
 use tokio::sync::mpsc;
+use vizia::prelude::*;
+
+use crate::err_msgbox;
 
 #[derive(Debug, Clone)]
-pub struct FfmpegCommandBuilder {
+pub struct FfmpegTask {
+    ffmpeg_entry: FfmpegEntry,
     input: Option<PathBuf>,
     output: Option<PathBuf>,
     video_bitrate: Option<u32>,
@@ -17,10 +21,52 @@ pub struct FfmpegCommandBuilder {
     extra_args: Vec<String>,
 }
 
+#[derive(Debug, Clone,Data)]
+pub enum FfmpegEntry {
+    Path(PathBuf),
+    Env,
+}
+
+impl ToString for FfmpegEntry {
+    fn to_string(&self) -> String {
+        match self {
+            FfmpegEntry::Path(path) => path.to_string_lossy().to_string(),
+            FfmpegEntry::Env => "ffmpeg".to_string(),
+        }
+    }
+}
+
+impl Into<PathBuf> for FfmpegEntry {
+    fn into(self) -> PathBuf {
+        match self {
+            FfmpegEntry::Path(path) => path,
+            FfmpegEntry::Env => PathBuf::from("ffmpeg"),
+        }
+    }
+}
+
+impl FromStr for FfmpegEntry {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            return Err("Empty string".to_string());
+        }
+
+        let path = PathBuf::from(s);
+        if path.exists() {
+            Ok(FfmpegEntry::Path(path))
+        } else {
+            Ok(FfmpegEntry::Env)
+        }
+    }
+}
+
 #[allow(dead_code)]
-impl FfmpegCommandBuilder {
-    pub fn new() -> Self {
+impl FfmpegTask {
+    pub fn new(ffmpeg_entry: FfmpegEntry) -> Self {
         Self {
+            ffmpeg_entry,
             input: None,
             output: None,
             video_bitrate: None,
@@ -112,82 +158,66 @@ impl FfmpegCommandBuilder {
 
         Ok((output, args))
     }
+
+    pub async fn run_with_progress(&self, task_id: usize, tx: mpsc::UnboundedSender<ProgressMsg>) {
+        match &self.clone().build() {
+            Ok((_output, args)) => {
+                let callback = {
+                    let tx = tx.clone();
+                    move |progress: f32| {
+                        let _ = tx.send(ProgressMsg::Progress { task_id, progress });
+                    }
+                };
+
+                let ffmpeg_entry = self.ffmpeg_entry.clone();
+                match run_ffmpeg_command_with_progress(ffmpeg_entry, task_id, args.clone(), callback).await {
+                    Ok(_) => {
+                        let _ = tx.send(ProgressMsg::Done { task_id });
+                        println!("[Task {task_id}] ✅ Task completed.");
+                    }
+                    Err(e) => {
+                        let _ = tx.send(ProgressMsg::Error {
+                            task_id,
+                            error: e.to_string(),
+                        });
+                        eprintln!("[Task {task_id}] ❌ Error: {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                let e = format!("[Task {task_id}] ❌ Invalid config: {}", e);
+                eprintln!("{e}");
+                err_msgbox!(e);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum ProgressMsg {
     Progress { task_id: usize, progress: f32 },
     Done { task_id: usize },
-}
-
-/// 异步执行单个 ffmpeg 命令，并实时输出日志
-pub async fn run_ffmpeg_command(id: usize, args: Vec<String>) -> anyhow::Result<()> {
-    let mut child = Command::new("ffmpeg")
-        .args(args)
-        .stderr(Stdio::piped())
-        .stdout(Stdio::null())
-        .spawn()?;
-
-    let stderr = child.stderr.take().unwrap();
-    let reader = BufReader::new(stderr).lines();
-
-    tokio::pin!(reader);
-
-    while let Some(line) = reader.next_line().await? {
-        println!("[Task {id}] {}", line);
-    }
-
-    let status = child.wait().await?;
-
-    if !status.success() {
-        eprintln!("[Task {id}] ffmpeg exited with code: {:?}", status.code());
-    } else {
-        println!("[Task {id}] ✅ Conversion done.");
-    }
-
-    Ok(())
+    Error { task_id: usize, error: String },
 }
 
 /// 并发处理多个任务
 pub async fn run_batch(
-    tasks: Vec<(usize, FfmpegCommandBuilder)>,
+    tasks: Vec<(usize, FfmpegTask)>,
     tx: mpsc::UnboundedSender<ProgressMsg>,
 ) -> anyhow::Result<()> {
-    let futures = tasks.into_iter().map(|(id, builder)| {
+    let futures = tasks.into_iter().map(|(id, task)| {
         let tx_clone = tx.clone();
-
-        async move {
-            match builder.build() {
-                Ok((_output, args)) => {
-                    let callback = {
-                        let tx = tx_clone.clone();
-                        move |progress: f32| {
-                            let _ = tx.send(ProgressMsg::Progress {
-                                task_id: id,
-                                progress,
-                            });
-                        }
-                    };
-
-                    if let Err(e) = run_ffmpeg_command_with_progress(id, args, callback).await {
-                        eprintln!("[Task {id}] ❌ Error: {:?}", e);
-                    } else {
-                        let _ = tx_clone.send(ProgressMsg::Done { task_id: id });
-                        println!("[Task {id}] ✅ Task completed.");
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[Task {id}] ❌ Invalid config: {}", e);
-                }
-            }
-        }
+        tokio::spawn(async move {
+            task.run_with_progress(id, tx_clone).await;
+        })
     });
 
     future::join_all(futures).await;
     Ok(())
 }
 
-pub async fn run_ffmpeg_command_with_progress<F>(
+async fn run_ffmpeg_command_with_progress<F>(
+    entity: FfmpegEntry,
     id: usize,
     args: Vec<String>,
     mut progress_cb: F,
@@ -197,7 +227,7 @@ where
 {
     use tokio::io::AsyncReadExt;
 
-    let mut cmd = Command::new("ffmpeg");
+    let mut cmd = Command::new(entity.to_string());
     cmd.args(&args)
         .stderr(Stdio::piped())
         .stdout(Stdio::null())
@@ -244,7 +274,6 @@ where
     Ok(())
 }
 
-
 fn parse_duration(line: &str) -> Option<f32> {
     let start = line.find("Duration: ")? + 10;
     let end = line[start..].find(',')? + start;
@@ -268,4 +297,29 @@ fn parse_time_str(s: &str) -> Option<f32> {
     let m = parts[1].parse::<f32>().ok()?;
     let s = parts[2].parse::<f32>().ok()?;
     Some(h * 3600.0 + m * 60.0 + s)
+}
+
+pub async fn find_ffmpeg() -> Option<FfmpegEntry> {
+    // check if env variable is set
+    if let Ok(output) = Command::new("ffmpeg").arg("-version").output().await {
+        if output.status.success() {
+            return Some(FfmpegEntry::Env);
+        }
+    }
+
+    // 2. or use ffmpeg from current directory
+    if let Ok(exe_path) = std::env::current_exe() {
+        let exe_dir = exe_path.parent().unwrap_or(Path::new("."));
+        #[cfg(target_os = "windows")]
+        let ffmpeg_path = exe_dir.join("ffmpeg.exe");
+        #[cfg(not(target_os = "windows"))]
+        let ffmpeg_path = exe_dir.join("ffmpeg");
+
+        if ffmpeg_path.exists() {
+            return Some(FfmpegEntry::Path(ffmpeg_path));
+        }
+    }
+
+    // 3. 404
+    None
 }
