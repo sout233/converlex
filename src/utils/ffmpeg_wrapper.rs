@@ -195,34 +195,42 @@ pub async fn run_ffmpeg_command_with_progress<F>(
 where
     F: FnMut(f32) + Send + 'static,
 {
+    use tokio::io::AsyncReadExt;
+
     let mut cmd = Command::new("ffmpeg");
     cmd.args(&args)
-        .stderr(Stdio::piped()) // FFmpeg 进度信息通常输出在 stderr
+        .stderr(Stdio::piped())
         .stdout(Stdio::null())
         .stdin(Stdio::null());
 
     let mut child = cmd.spawn()?;
-    let stderr = child.stderr.take().expect("Failed to capture stderr");
-
-    let reader = BufReader::new(stderr);
-    let mut lines = reader.lines();
-
+    let mut stderr = child.stderr.take().expect("Failed to capture stderr");
+    let mut buffer = vec![0u8; 4096];
+    let mut raw = Vec::new();
     let mut duration_secs: Option<f32> = None;
 
-    while let Some(line) = lines.next_line().await? {
-        // println!("[Task {id}] {}", line);
-        if line.contains("Duration:") {
-            // 提取 total 时长
-            if let Some(dur) = parse_duration(&line) {
-                duration_secs = Some(dur);
-                println!("[Task {id}] 🎬 Duration = {}s", dur);
-            }
-        } else if line.contains("time=") {
-            if let Some(current_time) = parse_progress_time(&line) {
-                if let Some(total) = duration_secs {
-                    let ratio = (current_time / total).min(1.0);
-                    println!("[Task {id}] ⏳ Progress: {:.2}%", ratio * 100.0);
-                    progress_cb(ratio);
+    loop {
+        let n = stderr.read(&mut buffer).await?;
+        if n == 0 {
+            break;
+        }
+        raw.extend_from_slice(&buffer[..n]);
+
+        while let Some(pos) = raw.iter().position(|&b| b == b'\r') {
+            let line = raw.drain(..=pos).collect::<Vec<_>>();
+            if let Ok(text) = String::from_utf8(line) {
+                if text.contains("Duration:") {
+                    if let Some(dur) = parse_duration(&text) {
+                        duration_secs = Some(dur);
+                        println!("[Task {id}] 🎬 Duration = {}s", dur);
+                    }
+                } else if text.contains("time=") {
+                    if let Some(current_time) = parse_progress_time(&text) {
+                        if let Some(total) = duration_secs {
+                            let ratio = (current_time / total).min(1.0);
+                            progress_cb(ratio);
+                        }
+                    }
                 }
             }
         }
@@ -235,6 +243,7 @@ where
 
     Ok(())
 }
+
 
 fn parse_duration(line: &str) -> Option<f32> {
     let start = line.find("Duration: ")? + 10;
