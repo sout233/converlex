@@ -1,8 +1,8 @@
 use futures_util::future;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::process::Stdio;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::mpsc;
 use vizia::prelude::*;
@@ -125,75 +125,81 @@ impl FfmpegTask {
     pub fn build(self) -> Result<(PathBuf, Vec<String>), String> {
         let input = self.input.ok_or("Missing input path")?;
         let output = self.output.ok_or("Missing output path")?;
-    
+
         let mut args = vec![
             "-y".into(),
             "-i".into(),
             input.to_string_lossy().into_owned(),
         ];
-    
+
         if let Some(b) = self.video_bitrate {
             args.push("-b:v".into());
             args.push(format!("{}k", b));
         }
-    
+
         if let Some(b) = self.audio_bitrate {
             args.push("-b:a".into());
             args.push(format!("{}k", b));
         }
-    
+
         if let Some((w, h)) = self.resolution {
             args.push("-s".into());
             args.push(format!("{}x{}", w, h));
         }
-    
+
         if let Some(fps) = self.frame_rate {
             args.push("-r".into());
             args.push(fps.to_string());
         }
-    
+
         if let Some(sr) = self.sample_rate {
             args.push("-ar".into());
             args.push(sr.to_string());
         }
-    
+
+        
+        // args.push("-f".into());
+        // args.push(self.output_format.to_string().to_string());
+        
         args.extend(self.extra_args);
-    
-        args.push("-f".into());
-        args.push(self.output_format.to_string().to_string());
-    
+
         args.push(output.to_string_lossy().into_owned());
-    
+
         Ok((output, args))
     }
-    
 
-    pub async fn run_with_progress(&self, task_id: usize, tx: mpsc::UnboundedSender<ProgressMsg>) {
+    pub async fn run_with_progress(&self, task_id: String, tx: mpsc::UnboundedSender<ProgressMsg>) {
         match &self.clone().build() {
             Ok((_output, args)) => {
+                let task_id = Arc::new(task_id);
+
                 let callback = {
+                    let task_id = Arc::clone(&task_id);
                     let tx = tx.clone();
                     move |progress: f32| {
-                        let _ = tx.send(ProgressMsg::Progress { task_id, progress });
+                        let _ = tx.send(ProgressMsg::Progress {
+                            task_id: task_id.as_str().to_string(),
+                            progress,
+                        });
                     }
                 };
 
                 let ffmpeg_entry = self.ffmpeg_entry.clone();
                 match run_ffmpeg_command_with_progress(
                     ffmpeg_entry,
-                    task_id,
+                    task_id.to_string(),
                     args.clone(),
                     callback,
                 )
                 .await
                 {
                     Ok(_) => {
-                        let _ = tx.send(ProgressMsg::Done { task_id });
+                        let _ = tx.send(ProgressMsg::Done { task_id: task_id.to_string() });
                         println!("[Task {task_id}] ✅ Task completed.");
                     }
                     Err(e) => {
                         let _ = tx.send(ProgressMsg::Error {
-                            task_id,
+                            task_id: task_id.to_string(),
                             error: e.to_string(),
                         });
                         eprintln!("[Task {task_id}] ❌ Error: {:?}", e);
@@ -211,14 +217,14 @@ impl FfmpegTask {
 
 #[derive(Debug, Clone)]
 pub enum ProgressMsg {
-    Progress { task_id: usize, progress: f32 },
-    Done { task_id: usize },
-    Error { task_id: usize, error: String },
+    Progress { task_id: String, progress: f32 },
+    Done { task_id: String },
+    Error { task_id: String, error: String },
 }
 
 /// 并发处理多个任务
 pub async fn run_batch(
-    tasks: Vec<(usize, FfmpegTask)>,
+    tasks: Vec<(String, FfmpegTask)>,
     tx: mpsc::UnboundedSender<ProgressMsg>,
 ) -> anyhow::Result<()> {
     let futures = tasks.into_iter().map(|(id, task)| {
@@ -233,7 +239,7 @@ pub async fn run_batch(
 }
 async fn run_ffmpeg_command_with_progress<F>(
     entity: FfmpegEntry,
-    id: usize,
+    id: String,
     args: Vec<String>,
     mut progress_cb: F,
 ) -> anyhow::Result<()>

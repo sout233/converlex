@@ -61,8 +61,8 @@ impl Model for AppData {
                 .collect();
 
                 let id = Uuid::new_v4().to_string();
-            self.tasks.insert(
-                id,
+                self.tasks.insert(
+                    id.clone(),
                     Task {
                         input_path: final_name.clone(),
                         output_path: get_output_path(&final_name, &MediaFormat::default(), false),
@@ -75,7 +75,7 @@ impl Model for AppData {
                     },
                 );
 
-               self.task_ids.push(id);
+                self.task_ids.push(id);
             }
             AppEvent::RemoveAll => {
                 self.task_ids.clear();
@@ -159,16 +159,16 @@ impl Model for AppData {
                 let ffmpeg_entry =
                     unwrap_or_msgbox!(&self.settings.ffmpeg_entry, "未找到ffmpeg，请在设置中配置");
 
-                let tasks: Vec<(usize, FfmpegTask)> = self
+                let tasks: Vec<(String, FfmpegTask)> = self
                     .tasks
                     .iter()
                     .enumerate()
-                    .map(|(idx, task)| {
+                    .map(|(_, (task_id, task))| {
                         let output_format =
                             Arc::clone(&task.supported_output_formats[task.selected_output_format]);
 
                         (
-                            idx,
+                            task_id.clone(),
                             FfmpegTask::new(ffmpeg_entry.clone(), output_format.clone()) //此处报错
                                 .input(task.input_path.clone())
                                 .output(task.output_path.clone()),
@@ -204,8 +204,9 @@ impl Model for AppData {
                                     });
                             }
                             ProgressMsg::Error { task_id, error } => {
-                                let _ =
-                                    event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
+                                let _ = event_proxy
+                                    .emit(AppEvent::MarkDone(task_id.clone()))
+                                    .map_err(|e| {
                                         eprintln!("❗ Error emitting ERROR event: {}", e);
                                     });
                                 err_msgbox!(format!("Task {task_id} failed\nErr: {error}"))
@@ -216,10 +217,10 @@ impl Model for AppData {
             }
             AppEvent::ToggleConifgWindow(idx) => {
                 self.show_config_window = !self.show_config_window;
-                self.configuring_taskid = Some(*idx);
+                self.configuring_taskid = Some(idx.to_string());
             }
             AppEvent::ToggleAutoRename(idx) => {
-                if let Some(task) = self.tasks.get_mut(*idx) {
+                if let Some(task) = self.tasks.get_mut(idx) {
                     task.auto_rename = !task.auto_rename;
                     if task.auto_rename {
                         task.output_path = get_output_path(
@@ -232,7 +233,7 @@ impl Model for AppData {
             }
             AppEvent::RemoveTask(_) => todo!(),
             AppEvent::UpdateTask(index, task) => {
-                if let Some(existing_task) = self.tasks.get_mut(*index) {
+                if let Some(existing_task) = self.tasks.get_mut(index) {
                     existing_task.input_path = task.input_path.clone();
                     existing_task.output_path = task.output_path.clone();
                     existing_task.auto_rename = task.auto_rename;
@@ -244,12 +245,12 @@ impl Model for AppData {
                 self.configuring_taskid = None;
             }
             AppEvent::UpdateProgress(idx, new_progress) => {
-                if let Some(task) = self.tasks.get_mut(*idx) {
+                if let Some(task) = self.tasks.get_mut(idx) {
                     task.progress = *new_progress;
                 }
             }
             AppEvent::MarkDone(idx) => {
-                if let Some(task) = self.tasks.get_mut(*idx) {
+                if let Some(task) = self.tasks.get_mut(idx) {
                     task.done = true;
                     task.progress = 1.0;
                 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use controllers::main::{app_data::AppData, app_event::AppEvent};
 use models::{app_settings::AppSettings, task::Task};
@@ -45,10 +45,13 @@ async fn main() -> Result<(), ApplicationError> {
             })
             .class("menu-btns-row");
 
-            List::new(cx, AppData::indices, |cx, _, idx| {
+            List::new(cx, AppData::task_ids, |cx, _, idx| {
                 Binding::new(cx, idx, |cx, index| {
                     let index = index.get(cx);
-                    let item = AppData::tasks.map_ref(move |tasks| &tasks[index]);
+                    let index = Arc::new(index.clone());
+                    let index4mapping = Arc::clone(&index);
+
+                    let item = AppData::tasks.map_ref(move |tasks| &tasks[&index4mapping.to_string()]);
                     let input_path = item.then(Task::input_path);
                     let output_path = item.then(Task::output_path);
                     let progress = item.then(Task::progress);
@@ -61,7 +64,7 @@ async fn main() -> Result<(), ApplicationError> {
                         .alignment(Alignment::Left);
 
                         Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
-                            cx.emit(AppEvent::ToggleConifgWindow(index));
+                            cx.emit(AppEvent::ToggleConifgWindow((&index).to_string()));
                         });
                     })
                     .class("task-row");

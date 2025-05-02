@@ -5,7 +5,7 @@ type TaskId = String;
 pub enum AppEvent {
     AddTask(Option<String>),
     RemoveTask(TaskId),
-    UpdateTask(TaskId, Task),
+    UpdateTask(String, Task),
     ToggleAutoRename(TaskId),
     ChangeOutputFormat(TaskId, usize),
     StartConvert,
