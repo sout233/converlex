@@ -1,7 +1,8 @@
-use std::{fs, path::Path, sync::Arc};
+use std::{collections::HashMap, fs, path::Path, sync::Arc};
 
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use tokio::sync::Mutex;
+use uuid::Uuid;
 use vizia::prelude::*;
 
 use crate::{
@@ -19,13 +20,14 @@ use crate::{
 };
 
 use super::app_event::AppEvent;
+type TaskId = String;
 
 #[derive(Lens, Data, Clone)]
 pub struct AppData {
-    pub indices: Vec<usize>,
-    pub tasks: Vec<Task>,
+    pub task_ids: Vec<TaskId>,        // 用于显示顺序
+    pub tasks: HashMap<TaskId, Task>, // 实际数据
     pub show_config_window: bool,
-    pub configuring_index: Option<usize>,
+    pub configuring_taskid: Option<TaskId>,
     pub settings: AppSettings,
     pub show_settings_window: bool,
 }
@@ -58,25 +60,30 @@ impl Model for AppData {
                 .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
                 .collect();
 
-                self.tasks.push(Task {
-                    input_path: final_name.clone(),
-                    output_path: get_output_path(&final_name, &MediaFormat::default(), false),
-                    supported_output_formats: arc_formats,
-                    done: false,
-                    selected_output_format: 0,
-                    auto_rename: true,
-                    progress: 0.0,
-                    task_type: TaskType::Ffmpeg,
-                });
-                self.indices.push(self.tasks.len() - 1);
+                let id = Uuid::new_v4().to_string();
+            self.tasks.insert(
+                id,
+                    Task {
+                        input_path: final_name.clone(),
+                        output_path: get_output_path(&final_name, &MediaFormat::default(), false),
+                        supported_output_formats: arc_formats,
+                        done: false,
+                        selected_output_format: 0,
+                        auto_rename: true,
+                        progress: 0.0,
+                        task_type: TaskType::Ffmpeg,
+                    },
+                );
+
+               self.task_ids.push(id);
             }
             AppEvent::RemoveAll => {
-                self.indices.clear();
+                self.task_ids.clear();
                 self.tasks.clear();
                 self.show_config_window = false;
             }
             AppEvent::ChangeOutputFormat(index, selected_format) => {
-                if let Some(task) = self.tasks.get_mut(*index) {
+                if let Some(task) = self.tasks.get_mut(index) {
                     task.selected_output_format = *selected_format;
 
                     let format = &*task.supported_output_formats[*selected_format];
@@ -86,8 +93,8 @@ impl Model for AppData {
                 }
             }
             AppEvent::StartConvert => {
-                for index in &self.indices {
-                    let task = &self.tasks[*index];
+                for task_id in &self.task_ids {
+                    let task = &self.tasks[task_id];
                     if task.done {
                         continue;
                     }
@@ -149,10 +156,8 @@ impl Model for AppData {
                 let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<ProgressMsg>();
                 let rx = Arc::new(Mutex::new(rx));
 
-                let ffmpeg_entry = unwrap_or_msgbox!(
-                    &self.settings.ffmpeg_entry,
-                    "ffmpeg.exe 未找到，请在设置中配置"
-                );
+                let ffmpeg_entry =
+                    unwrap_or_msgbox!(&self.settings.ffmpeg_entry, "未找到ffmpeg，请在设置中配置");
 
                 let tasks: Vec<(usize, FfmpegTask)> = self
                     .tasks
@@ -211,7 +216,7 @@ impl Model for AppData {
             }
             AppEvent::ToggleConifgWindow(idx) => {
                 self.show_config_window = !self.show_config_window;
-                self.configuring_index = Some(*idx);
+                self.configuring_taskid = Some(*idx);
             }
             AppEvent::ToggleAutoRename(idx) => {
                 if let Some(task) = self.tasks.get_mut(*idx) {
@@ -236,7 +241,7 @@ impl Model for AppData {
             }
             AppEvent::ConfigWindowClosing => {
                 self.show_config_window = false;
-                self.configuring_index = None;
+                self.configuring_taskid = None;
             }
             AppEvent::UpdateProgress(idx, new_progress) => {
                 if let Some(task) = self.tasks.get_mut(*idx) {

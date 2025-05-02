@@ -1,17 +1,19 @@
 use crate::{models::{app_settings::AppSettings, task::Task}, utils::ffmpeg_wrapper::FfmpegEntry};
 
+type TaskId = String;
+
 pub enum AppEvent {
     AddTask(Option<String>),
-    RemoveTask(usize),
-    UpdateTask(usize, Task),
-    ToggleAutoRename(usize),
-    ChangeOutputFormat(usize, usize),
+    RemoveTask(TaskId),
+    UpdateTask(TaskId, Task),
+    ToggleAutoRename(TaskId),
+    ChangeOutputFormat(TaskId, usize),
     StartConvert,
     RemoveAll,
-    ToggleConifgWindow(usize),
+    ToggleConifgWindow(TaskId),
     ConfigWindowClosing,
-    UpdateProgress(usize, f32),
-    MarkDone(usize),
+    UpdateProgress(TaskId, f32),
+    MarkDone(TaskId),
     UpdateAppSettings(Box<dyn FnOnce(&mut AppSettings) + Send>),
     UpdateFfmpegEntry(Option<FfmpegEntry>),
     ToggleSettingsWindow,

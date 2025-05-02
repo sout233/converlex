@@ -7,10 +7,11 @@ use crate::{
 
 pub fn popup(cx: &mut Context) -> Handle<Window> {
     Window::popup(cx, true, |cx| {
-        Binding::new(cx, AppData::configuring_index, |cx, index| {
+        Binding::new(cx, AppData::configuring_taskid, |cx, index| {
             let index = index.get(cx);
             if let Some(index) = index {
-                let item = AppData::tasks.map_ref(move |tasks| &tasks[index]);
+                let index_clone = index.clone();
+                let item = AppData::tasks.map_ref(move |tasks| &tasks[&index]);
                 let input_path = item.then(Task::input_path);
                 let output_path = item.then(Task::output_path);
                 let supported_output_formats = item.then(Task::supported_output_formats);
@@ -19,14 +20,14 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                 let is_done = item.then(Task::done);
                 let task_type = item.then(Task::task_type);
 
-                VStack::new(cx, |cx| {
+                VStack::new(cx, move |cx| {
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Input").padding_right(Pixels(10.0));
                         // Label::new(cx, name);
                         Textbox::new(cx, input_path).width(Stretch(1.0)).on_edit(
                             move |cx, new_input| {
                                 cx.emit(AppEvent::UpdateTask(
-                                    index,
+                                    index_clone.clone(),
                                     Task {
                                         input_path: new_input.to_string(),
                                         output_path: output_path.get(cx).clone(),
@@ -37,7 +38,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
                                         progress: 0.0,
-                                        task_type:task_type.get(cx).clone(),
+                                        task_type: task_type.get(cx).clone(),
                                     },
                                 ));
                             },
@@ -50,7 +51,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                             .width(Stretch(1.0))
                             .on_edit(move |cx, new_output| {
                                 cx.emit(AppEvent::UpdateTask(
-                                    index,
+                                    index_clone.clone(),
                                     Task {
                                         output_path: new_output.to_string(),
                                         input_path: input_path.get(cx).clone(),
@@ -61,7 +62,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                         selected_output_format: selected_output_format.get(cx),
                                         auto_rename: is_auto_rename.get(cx),
                                         progress: 0.0,
-                                        task_type:task_type.get(cx).clone(),
+                                        task_type: task_type.get(cx).clone(),
                                     },
                                 ));
                             })
@@ -69,7 +70,8 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                         HStack::new(cx, |cx| {
                             Label::new(cx, "Auto Rename");
                             Checkbox::new(cx, is_auto_rename).on_toggle(move |cx| {
-                                cx.emit(AppEvent::ToggleAutoRename(index));
+                                cx.emit(AppEvent::ToggleAutoRename(                                    index_clone.clone(),
+));
                             });
                         })
                         .class("auto-rename-checkbox");

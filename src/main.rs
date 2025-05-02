@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use controllers::main::{app_data::AppData, app_event::AppEvent};
 use models::{app_settings::AppSettings, task::Task};
 use views::windows::task_config_window;
@@ -8,19 +10,18 @@ mod models;
 mod utils;
 mod views;
 
-
 #[tokio::main]
 async fn main() -> Result<(), ApplicationError> {
     let app_settings = AppSettings::omg_default().await;
 
     Application::new(move |cx| {
         AppData {
-            indices: vec![],
-            tasks: vec![],
             show_config_window: false,
-            configuring_index: None,
+            configuring_taskid: None,
             settings: app_settings.clone(),
             show_settings_window: false,
+            task_ids: vec![],
+            tasks: HashMap::new(),
         }
         .build(cx);
 
@@ -55,7 +56,7 @@ async fn main() -> Result<(), ApplicationError> {
                         VStack::new(cx, |cx| {
                             Label::new(cx, input_path);
                             Label::new(cx, output_path);
-                            ProgressBar::new(cx,progress,Orientation::Horizontal);
+                            ProgressBar::new(cx, progress, Orientation::Horizontal);
                         })
                         .alignment(Alignment::Left);
 
