@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use vizia::prelude::*;
 
@@ -14,16 +14,22 @@ pub fn new(cx: &mut Context) -> Handle<Window> {
             Label::new(cx, "Settings").class("title");
             HStack::new(cx, |cx| {
                 Label::new(cx, "FFmpeg Path").padding_right(Pixels(10.0));
-                Textbox::new(cx, AppSettings::ffmpeg_entry.map(|fe|{
-                    match fe {
-                        Some(a) => a.to_string(),
-                        None => "".to_string(),
-                    }
-                })).on_edit(move |cx, new_path| {
-                    cx.emit(AppEvent::UpdateFfmpegEntry(Some(FfmpegEntry::Path(PathBuf::from(new_path)))));
+
+                let ffmpeg_entry_binding = AppData::settings
+                    .then(AppSettings::ffmpeg_entry)
+                    .map(|opt| opt.as_ref().map(|e| e.to_string()).unwrap_or_default());
+
+                Textbox::new(cx, ffmpeg_entry_binding).on_edit(move |cx, new_text| {
+                    let new_entry = if new_text.is_empty() {
+                        None
+                    } else {
+                        Some(FfmpegEntry::Path(PathBuf::from(new_text)))
+                    };
+
+                    cx.emit(AppEvent::UpdateFfmpegEntry(new_entry));
                 }).width(Stretch(1.0));
             })
-            .class("config-row");
-        });
+            .class("setting-row");
+        }).class("settings-window-content");
     })
 }

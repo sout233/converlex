@@ -1,5 +1,6 @@
 use futures_util::future;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::process::Stdio;
 use std::str::FromStr;
 use tokio::process::Command;
@@ -7,12 +8,14 @@ use tokio::sync::mpsc;
 use vizia::prelude::*;
 
 use crate::err_msgbox;
+use crate::models::convertible_format::ConvertibleFormat;
 
 #[derive(Debug, Clone)]
 pub struct FfmpegTask {
     ffmpeg_entry: FfmpegEntry,
     input: Option<PathBuf>,
     output: Option<PathBuf>,
+    output_format: Arc<dyn ConvertibleFormat>,
     video_bitrate: Option<u32>,
     audio_bitrate: Option<u32>,
     resolution: Option<(u32, u32)>,
@@ -21,7 +24,7 @@ pub struct FfmpegTask {
     extra_args: Vec<String>,
 }
 
-#[derive(Debug, Clone,Data)]
+#[derive(Debug, Clone, Data)]
 pub enum FfmpegEntry {
     Path(PathBuf),
     Env,
@@ -64,11 +67,12 @@ impl FromStr for FfmpegEntry {
 
 #[allow(dead_code)]
 impl FfmpegTask {
-    pub fn new(ffmpeg_entry: FfmpegEntry) -> Self {
+    pub fn new(ffmpeg_entry: FfmpegEntry, output_format: Arc<dyn ConvertibleFormat>) -> Self {
         Self {
             ffmpeg_entry,
             input: None,
             output: None,
+            output_format: output_format,
             video_bitrate: None,
             audio_bitrate: None,
             resolution: None,
@@ -121,43 +125,48 @@ impl FfmpegTask {
     pub fn build(self) -> Result<(PathBuf, Vec<String>), String> {
         let input = self.input.ok_or("Missing input path")?;
         let output = self.output.ok_or("Missing output path")?;
-
+    
         let mut args = vec![
             "-y".into(),
             "-i".into(),
             input.to_string_lossy().into_owned(),
         ];
-
+    
         if let Some(b) = self.video_bitrate {
             args.push("-b:v".into());
             args.push(format!("{}k", b));
         }
-
+    
         if let Some(b) = self.audio_bitrate {
             args.push("-b:a".into());
             args.push(format!("{}k", b));
         }
-
+    
         if let Some((w, h)) = self.resolution {
             args.push("-s".into());
             args.push(format!("{}x{}", w, h));
         }
-
+    
         if let Some(fps) = self.frame_rate {
             args.push("-r".into());
             args.push(fps.to_string());
         }
-
+    
         if let Some(sr) = self.sample_rate {
             args.push("-ar".into());
             args.push(sr.to_string());
         }
-
+    
         args.extend(self.extra_args);
+    
+        args.push("-f".into());
+        args.push(self.output_format.to_string().to_string());
+    
         args.push(output.to_string_lossy().into_owned());
-
+    
         Ok((output, args))
     }
+    
 
     pub async fn run_with_progress(&self, task_id: usize, tx: mpsc::UnboundedSender<ProgressMsg>) {
         match &self.clone().build() {
@@ -170,7 +179,14 @@ impl FfmpegTask {
                 };
 
                 let ffmpeg_entry = self.ffmpeg_entry.clone();
-                match run_ffmpeg_command_with_progress(ffmpeg_entry, task_id, args.clone(), callback).await {
+                match run_ffmpeg_command_with_progress(
+                    ffmpeg_entry,
+                    task_id,
+                    args.clone(),
+                    callback,
+                )
+                .await
+                {
                     Ok(_) => {
                         let _ = tx.send(ProgressMsg::Done { task_id });
                         println!("[Task {task_id}] ✅ Task completed.");
@@ -215,7 +231,6 @@ pub async fn run_batch(
     future::join_all(futures).await;
     Ok(())
 }
-
 async fn run_ffmpeg_command_with_progress<F>(
     entity: FfmpegEntry,
     id: usize,
@@ -227,17 +242,32 @@ where
 {
     use tokio::io::AsyncReadExt;
 
+    println!(
+        "[Task {id}] ▶ Running: {} {}",
+        entity.to_string(),
+        args.join(" ")
+    );
+
     let mut cmd = Command::new(entity.to_string());
     cmd.args(&args)
         .stderr(Stdio::piped())
         .stdout(Stdio::null())
         .stdin(Stdio::null());
 
-    let mut child = cmd.spawn()?;
+    let mut child = cmd.spawn().map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to spawn ffmpeg process: {}\nCommand: {} {}",
+            e,
+            entity.to_string(),
+            args.join(" ")
+        )
+    })?;
+
     let mut stderr = child.stderr.take().expect("Failed to capture stderr");
     let mut buffer = vec![0u8; 4096];
     let mut raw = Vec::new();
     let mut duration_secs: Option<f32> = None;
+    let mut full_stderr = String::new();
 
     loop {
         let n = stderr.read(&mut buffer).await?;
@@ -249,6 +279,10 @@ where
         while let Some(pos) = raw.iter().position(|&b| b == b'\r') {
             let line = raw.drain(..=pos).collect::<Vec<_>>();
             if let Ok(text) = String::from_utf8(line) {
+                if text.to_lowercase().contains("error") || text.to_lowercase().contains("err") {
+                    full_stderr.push_str(&text);
+                }
+
                 if text.contains("Duration:") {
                     if let Some(dur) = parse_duration(&text) {
                         duration_secs = Some(dur);
@@ -268,7 +302,11 @@ where
 
     let status = child.wait().await?;
     if !status.success() {
-        anyhow::bail!("ffmpeg exited with status {}", status);
+        return Err(anyhow::anyhow!(
+            "ffmpeg exited with status {}\nFull stderr:\n{}",
+            status,
+            full_stderr
+        ));
     }
 
     Ok(())

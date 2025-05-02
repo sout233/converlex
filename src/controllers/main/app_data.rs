@@ -159,9 +159,12 @@ impl Model for AppData {
                     .iter()
                     .enumerate()
                     .map(|(idx, task)| {
+                        let output_format =
+                            Arc::clone(&task.supported_output_formats[task.selected_output_format]);
+
                         (
                             idx,
-                            FfmpegTask::new(ffmpeg_entry.clone())
+                            FfmpegTask::new(ffmpeg_entry.clone(), output_format.clone()) //此处报错
                                 .input(task.input_path.clone())
                                 .output(task.output_path.clone()),
                         )
@@ -256,7 +259,7 @@ impl Model for AppData {
             }
             AppEvent::UpdateFfmpegEntry(app_settings) => {
                 self.settings.ffmpeg_entry = app_settings.clone();
-            },
+            }
         });
     }
 }
