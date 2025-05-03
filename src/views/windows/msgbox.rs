@@ -49,16 +49,3 @@ macro_rules! unwrap_or_msgbox {
         }
     }};
 }
-
-pub trait FxxkOption {
-    fn unwrap_or_empty_string(self) -> String;
-}
-
-impl FxxkOption for Option<FfmpegEntry> {
-    fn unwrap_or_empty_string(self) -> String {
-        match self {
-            Some(v) => v.to_string(),
-            None => String::new(),
-        }
-    }
-}

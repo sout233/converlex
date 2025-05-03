@@ -1,9 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use controllers::main::{app_data::AppData, app_event::AppEvent};
-use models::{app_settings::AppSettings, task::Task};
+use models::{
+    app_settings::AppSettings,
+    task::{Task, task_derived_lenses::supported_output_formats},
+};
 use views::windows::task_config_window;
-use vizia::prelude::*;
+use vizia::{input, prelude::*};
 
 mod controllers;
 mod models;
@@ -51,21 +54,52 @@ async fn main() -> Result<(), ApplicationError> {
                     let index = Arc::new(index.clone());
                     let index4mapping = Arc::clone(&index);
 
-                    let item = AppData::tasks.map_ref(move |tasks| &tasks[&index4mapping.to_string()]);
+                    let item =
+                        AppData::tasks.map_ref(move |tasks| &tasks[&index4mapping.to_string()]);
+
                     let input_path = item.then(Task::input_path);
                     let output_path = item.then(Task::output_path);
-                    let progress = item.then(Task::progress);
-                    HStack::new(cx, |cx| {
-                        VStack::new(cx, |cx| {
-                            Label::new(cx, input_path);
-                            Label::new(cx, output_path);
-                            ProgressBar::new(cx, progress, Orientation::Horizontal);
-                        })
-                        .alignment(Alignment::Left);
+                    let input_format = input_path
+                        .map(|path| path.split('.').last().unwrap_or_default().to_string());
 
-                        Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
-                            cx.emit(AppEvent::ToggleConifgWindow((&index).to_string()));
+                    let progress = item.then(Task::progress);
+
+                    VStack::new(cx, |cx| {
+                        HStack::new(cx, |cx| {
+                            VStack::new(cx, |cx| {
+                                HStack::new(cx, |cx| {
+                                    Label::new(cx, input_format)
+                                        .class("badge-label")
+                                        .width(Pixels(45.0));
+                                    Label::new(cx, input_path).padding_left(Pixels(5.0));
+                                });
+
+                                HStack::new(cx, |cx| {
+                                    Binding::new(
+                                        cx,
+                                        item.then(Task::selected_output_format),
+                                        move |cx, selected| {
+                                            let formats = item
+                                                .then(Task::supported_output_formats)
+                                                .get(cx)
+                                                .clone();
+                                            let format = formats[selected.get(cx)].to_string();
+                                            Label::new(cx, format)
+                                                .class("badge-label")
+                                                .width(Pixels(45.0));
+                                        },
+                                    );
+                                    Label::new(cx, output_path).padding_left(Pixels(5.0));
+                                });
+                            })
+                            .class("task-paths")
+                            .alignment(Alignment::Left);
+
+                            Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
+                                cx.emit(AppEvent::ToggleConifgWindow((&index).to_string()));
+                            });
                         });
+                        ProgressBar::new(cx, progress, Orientation::Horizontal);
                     })
                     .class("task-row");
 

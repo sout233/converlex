@@ -33,7 +33,6 @@ label.count {
   alignment: top;
   gap: 4px;
   height: 50px;
-  /* background-color: cadetblue; */
 }
 
 .config-row {
@@ -50,15 +49,10 @@ label.count {
   alignment: center;
 }
 
-.task-list {
-  gap: 12px;
-  /* background-color: aqua; */
-}
-
 .task-row {
-  height: 60px;
+  height: 100px;
   /* background-color: red; */
-  alignment: left;
+  alignment: top-left;
   padding: 10px;
   /* shadow: 0px 2px 20px rgb(0 0 0 / 10%); */
   corner-radius: 12px;
@@ -66,7 +60,20 @@ label.count {
   border-color: rgb(0 0 0 / 10%);
 }
 
-.task-list scroll-content{
+.task-row .task-paths{
+  vertical-gap: 10px;
+  alignment: top-center;
+  /* background-color: red; */
+  height: auto;
+}
+
+.task-row .task-paths hstack{
+  /* background-color: blue; */
+  height: auto;
+  alignment: top-left;
+}
+
+.task-list scroll-content {
   vertical-gap: 20px;
 }
 
@@ -78,14 +85,14 @@ label.count {
   vertical-gap: 10px;
 } */
 
-.title{
+.title {
   font-size: xx-large;
   font-weight: bold;
   color: #000000;
   /* background-color: red; */
 }
 
-.setting-row{
+.setting-row {
   alignment: left;
   height: 40px;
   border: 1px solid rgb(0 0 0 / 10%);
@@ -93,8 +100,17 @@ label.count {
   padding: 10px;
 }
 
-.settings-window-content{
+.settings-window-content {
   alignment: top-left;
   padding: 10px;
   gap: 20px;
+}
+
+.badge-label {
+  padding-left: 8px;
+  padding-right: 8px;
+  background-color: blueviolet;
+  color: white;
+  corner-radius: 12px;
+  alignment: center;
 }

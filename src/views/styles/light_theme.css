@@ -663,7 +663,8 @@ picklist list.selectable list-item:focus-visible {
 /* POPUP */
 
 popup {
-    background-color: #ffffff;
+    /* background-color: #ffffff; */
+    background-color: white;
     corner-radius: 12px;
     border: 1px #d2d2d2;
     shadow: 0px 4px 64px #00000038;
