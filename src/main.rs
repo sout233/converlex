@@ -69,8 +69,7 @@ async fn main() -> Result<(), ApplicationError> {
                             VStack::new(cx, |cx| {
                                 HStack::new(cx, |cx| {
                                     Label::new(cx, input_format)
-                                        .class("badge-label")
-                                        .width(Pixels(45.0));
+                                        .class("badge-label");
                                     Label::new(cx, input_path).padding_left(Pixels(5.0));
                                 });
 
