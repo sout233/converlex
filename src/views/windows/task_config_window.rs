@@ -96,21 +96,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                     selected_format,
                                 ));
                             });
-                        // ComboBox::new(
-                        //     cx,
-                        //     supported_output_formats,
-                        //     selected_output_format,
-                        // )
-                        // .alignment(Alignment::Right)
-                        // .width(Pixels(100.0))
-                        // .on_select(
-                        //     move |cx, selected_format| {
-                        //         cx.emit(AppEvent::ChangeOutputFormat(
-                        //             index,
-                        //             selected_format,
-                        //         ));
-                        //     },
-                        // );
+
                     })
                     .class("config-row");
                 });

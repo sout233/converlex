@@ -52,20 +52,23 @@ impl Model for AppData {
                     }
                 };
 
-                let arc_formats = MediaFormat::get_supported_output_formats(
-                    // TODO: 当没有找到格式时，在前端报错
-                    &MediaFormat::new(&get_file_extension(&final_name)).unwrap(),
-                )
-                .into_iter()
-                .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
-                .collect();
+                let binding = &MediaFormat::new(&get_file_extension(&final_name));
+                let arc_formats: Vec<Arc<dyn ConvertibleFormat>> =
+                    MediaFormat::get_supported_output_formats(unwrap_or_msgbox!(
+                        binding,
+                        "不支持的文件格式"
+                    ))
+                    .into_iter()
+                    .map(|boxed| Arc::from(boxed)) // 或 Arc::new(*boxed) if Box is moved
+                    .collect();
+                let output_format = arc_formats.first().unwrap().as_any();
 
                 let id = Uuid::new_v4().to_string();
                 self.tasks.insert(
                     id.clone(),
                     Task {
                         input_path: final_name.clone(),
-                        output_path: get_output_path(&final_name, &MediaFormat::default(), false),
+                        output_path: get_output_path(&final_name, output_format, false),
                         supported_output_formats: arc_formats,
                         done: false,
                         selected_output_format: 0,
@@ -87,9 +90,11 @@ impl Model for AppData {
                     task.selected_output_format = *selected_format;
 
                     let format = &*task.supported_output_formats[*selected_format];
-                    let new_output_path = get_output_path(&task.input_path, format, false);
 
-                    task.output_path = new_output_path;
+                    if task.auto_rename {
+                        let new_output_path = get_output_path(&task.input_path, format, false);
+                        task.output_path = new_output_path;
+                    }
                 }
             }
             AppEvent::StartConvert => {
@@ -107,6 +112,13 @@ impl Model for AppData {
 
                     if input_path == &output_path {
                         println!("输入输出路径相同，跳过任务：{}", input_path);
+                        rfd::MessageDialog::new()
+                            .set_title("Failed")
+                            .set_description(format!(
+                                "输入输出路径相同，跳过任务：\n\n源文件:\n{}\n输出文件:\n{}",
+                                input_path, output_path
+                            ))
+                            .show();
                         continue;
                     }
 
