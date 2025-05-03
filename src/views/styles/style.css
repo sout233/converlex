@@ -60,6 +60,22 @@ label.count {
   border-color: rgb(0 0 0 / 10%);
 }
 
+.task-row-selected {
+  height: 100px;
+  /* background-color: red; */
+  alignment: top-left;
+  padding: 10px;
+  /* shadow: 0px 2px 20px rgb(0 0 0 / 10%); */
+  corner-radius: 12px;
+  border-width: 1px;
+  border-color: #00c3ff49;
+  background-color: #00c3ff18;
+}
+
+.task-row:hover{
+  background-color: #00000004;
+}
+
 .task-row .task-paths{
   vertical-gap: 10px;
   alignment: top-center;
@@ -107,8 +123,8 @@ label.count {
 }
 
 .badge-label {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
   background-color: blueviolet;
   color: white;
   corner-radius: 12px;

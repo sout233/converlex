@@ -1,12 +1,18 @@
 use std::{collections::HashMap, sync::Arc};
 
-use controllers::main::{app_data::AppData, app_event::AppEvent};
+use controllers::main::{
+    app_data::{AppData, app_data_derived_lenses::configuring_taskid},
+    app_event::AppEvent,
+};
 use models::{
     app_settings::AppSettings,
     task::{Task, task_derived_lenses::supported_output_formats},
 };
 use views::windows::task_config_window;
-use vizia::{input, prelude::*};
+use vizia::{
+    input::{self, MouseState},
+    prelude::*,
+};
 
 mod controllers;
 mod models;
@@ -50,57 +56,78 @@ async fn main() -> Result<(), ApplicationError> {
 
             List::new(cx, AppData::task_ids, |cx, _, idx| {
                 Binding::new(cx, idx, |cx, index| {
-                    let index = index.get(cx);
-                    let index = Arc::new(index.clone());
-                    let index4mapping = Arc::clone(&index);
+                    Binding::new(cx, AppData::configuring_taskid, move |cx, id| {
+                        let index = index.get(cx);
+                        let index = Arc::new(index.clone());
+                        let index4mapping = Arc::clone(&index);
+                        let index4click = Arc::clone(&index);
+    
+                        let item =
+                            AppData::tasks.map_ref(move |tasks| &tasks[&index4mapping.to_string()]);
+    
+                        let input_path = item.then(Task::input_path);
+                        let output_path = item.then(Task::output_path);
+                        let input_format = input_path
+                            .map(|path| path.split('.').last().unwrap_or_default().to_string());
+    
+                        let progress = item.then(Task::progress);
+    
+                        let index4color = Arc::clone(&index);
 
-                    let item =
-                        AppData::tasks.map_ref(move |tasks| &tasks[&index4mapping.to_string()]);
+                        let configuring_tid = id.get(cx).unwrap_or_default();
+                        let bg_color = if configuring_tid == *index4color {
+                            Color::from("#00c3ff18")
+                        } else {
+                            Color::from("#ffffff")
+                        };
+                        let class_name = if configuring_tid == *index4color {
+                            "task-row-selected"
+                        } else {
+                            "task-row"
+                        };
 
-                    let input_path = item.then(Task::input_path);
-                    let output_path = item.then(Task::output_path);
-                    let input_format = input_path
-                        .map(|path| path.split('.').last().unwrap_or_default().to_string());
+                        VStack::new(cx, move |cx| {
+                            HStack::new(cx, |cx| {
+                                VStack::new(cx, |cx| {
+                                    HStack::new(cx, |cx| {
+                                        Label::new(cx, input_format).class("badge-label");
+                                        Label::new(cx, input_path).padding_left(Pixels(5.0));
+                                    });
 
-                    let progress = item.then(Task::progress);
+                                    HStack::new(cx, |cx| {
+                                        Binding::new(
+                                            cx,
+                                            item.then(Task::selected_output_format),
+                                            move |cx, selected| {
+                                                let formats = item
+                                                    .then(Task::supported_output_formats)
+                                                    .get(cx)
+                                                    .clone();
+                                                let format = formats[selected.get(cx)].to_string();
+                                                Label::new(cx, format).class("badge-label");
+                                            },
+                                        );
+                                        Label::new(cx, output_path).padding_left(Pixels(5.0));
+                                    });
+                                })
+                                .class("task-paths")
+                                .alignment(Alignment::Left);
 
-                    VStack::new(cx, |cx| {
-                        HStack::new(cx, |cx| {
-                            VStack::new(cx, |cx| {
-                                HStack::new(cx, |cx| {
-                                    Label::new(cx, input_format)
-                                        .class("badge-label");
-                                    Label::new(cx, input_path).padding_left(Pixels(5.0));
-                                });
-
-                                HStack::new(cx, |cx| {
-                                    Binding::new(
-                                        cx,
-                                        item.then(Task::selected_output_format),
-                                        move |cx, selected| {
-                                            let formats = item
-                                                .then(Task::supported_output_formats)
-                                                .get(cx)
-                                                .clone();
-                                            let format = formats[selected.get(cx)].to_string();
-                                            Label::new(cx, format)
-                                                .class("badge-label")
-                                                .width(Pixels(45.0));
-                                        },
-                                    );
-                                    Label::new(cx, output_path).padding_left(Pixels(5.0));
-                                });
-                            })
-                            .class("task-paths")
-                            .alignment(Alignment::Left);
-
-                            Button::new(cx, |cx| Label::new(cx, "Config")).on_press(move |cx| {
-                                cx.emit(AppEvent::ToggleConifgWindow((&index).to_string()));
+                                Button::new(cx, |cx| Label::new(cx, "Config")).on_press(
+                                    move |cx| {
+                                        cx.emit(AppEvent::ToggleConifgWindow((&index).to_string()));
+                                    },
+                                );
                             });
-                        });
-                        ProgressBar::new(cx, progress, Orientation::Horizontal);
-                    })
-                    .class("task-row");
+                            ProgressBar::new(cx, progress, Orientation::Horizontal);
+                        })
+                        .on_mouse_down(move |ex, button| {
+                            if button == MouseButton::Left {
+                                ex.emit(AppEvent::ToggleConifgWindow((&index4click).to_string()));
+                            }
+                        })
+                        .class(class_name);
+                    });
 
                     // HStack::new(cx, |_| {}).height(Pixels(10.0));
                 });
