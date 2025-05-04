@@ -10,11 +10,13 @@ pub enum AppEvent {
     ChangeOutputFormat(TaskId, usize),
     StartConvert,
     RemoveAll,
-    ToggleConifgWindow(TaskId),
+    ToggleConifg(TaskId),
     ConfigWindowClosing,
     UpdateProgress(TaskId, f32),
-    MarkDone(TaskId),
+    MarkDone(TaskId,bool),
     UpdateAppSettings(Box<dyn FnOnce(&mut AppSettings) + Send>),
     UpdateFfmpegEntry(Option<FfmpegEntry>),
     ToggleSettingsWindow,
+    ToggleFormatSelectorWindow(TaskId),
+    FormatSelectorWindowClosing
 }

@@ -1,5 +1,10 @@
-use std::fmt::Display;
+use std::fmt::{self, Display};
+use strum::IntoEnumIterator;
+use strum_macros::AsRefStr;
+use strum_macros::EnumIter;
 use vizia::prelude::*;
+
+use crate::def_formats;
 
 use super::convertible_format::ConvertibleFormat;
 
@@ -11,15 +16,17 @@ pub enum MediaFormat {
 
 impl MediaFormat {
     pub fn new(extension: &str) -> Option<Self> {
-        match extension {
-            "mp4" => Some(MediaFormat::Video(Video::Mp4)),
-            "mkv" => Some(MediaFormat::Video(Video::Mkv)),
-            "avi" => Some(MediaFormat::Video(Video::Avi)),
-            "mp3" => Some(MediaFormat::Audio(Audio::Mp3)),
-            "wav" => Some(MediaFormat::Audio(Audio::Wav)),
-            "flac" => Some(MediaFormat::Audio(Audio::Flac)),
-            _ => None,
+        let ext = extension.trim_start_matches('.').to_lowercase();
+
+        if let Some(video) = Video::from_extension(&ext) {
+            return Some(MediaFormat::Video(video));
         }
+
+        if let Some(audio) = Audio::from_extension(&ext) {
+            return Some(MediaFormat::Audio(audio));
+        }
+
+        None
     }
 }
 
@@ -38,25 +45,26 @@ impl Display for MediaFormat {
     }
 }
 
-impl ConvertibleFormat for MediaFormat{
+impl ConvertibleFormat for MediaFormat {
     fn get_supported_output_formats(&self) -> Vec<Box<dyn ConvertibleFormat>> {
+        let audio_all: Vec<Box<dyn ConvertibleFormat>> = Audio::all()
+            .into_iter()
+            .map(|fmt| Box::new(MediaFormat::Audio(fmt)) as Box<dyn ConvertibleFormat>)
+            .collect();
+
+        let video_all: Vec<Box<dyn ConvertibleFormat>> = Video::all()
+            .into_iter()
+            .map(|fmt| Box::new(MediaFormat::Video(fmt)) as Box<dyn ConvertibleFormat>)
+            .collect();
+
+        let all = audio_all
+            .into_iter()
+            .chain(video_all.into_iter())
+            .collect::<Vec<_>>();
+
         match self {
-            MediaFormat::Audio(_) => vec![
-                Box::new(MediaFormat::Audio(Audio::Mp3)),
-                Box::new(MediaFormat::Audio(Audio::Wav)),
-                Box::new(MediaFormat::Audio(Audio::Flac)),
-                Box::new(MediaFormat::Video(Video::Mp4)),
-                Box::new(MediaFormat::Video(Video::Mkv)),
-                Box::new(MediaFormat::Video(Video::Avi)),
-            ],
-            MediaFormat::Video(_) => vec![
-                Box::new(MediaFormat::Video(Video::Mp4)),
-                Box::new(MediaFormat::Video(Video::Mkv)),
-                Box::new(MediaFormat::Video(Video::Avi)),
-                Box::new(MediaFormat::Audio(Audio::Mp3)),
-                Box::new(MediaFormat::Audio(Audio::Wav)),
-                Box::new(MediaFormat::Audio(Audio::Flac)),
-            ],
+            MediaFormat::Audio(_) => all,
+            MediaFormat::Video(_) => all,
         }
     }
 
@@ -66,7 +74,7 @@ impl ConvertibleFormat for MediaFormat{
             MediaFormat::Video(_) => self,
         }
     }
-    
+
     fn get_ext(&self) -> String {
         match self {
             MediaFormat::Audio(audio) => audio.to_string(),
@@ -75,36 +83,82 @@ impl ConvertibleFormat for MediaFormat{
     }
 }
 
-#[derive(Data, Clone, Debug, PartialEq)]
-pub enum Video {
+def_formats! {Video{
     Mp4,
     Mkv,
     Avi,
-}
+    Mov,
+    Wmv,
+    Flv,
+    Webm,
+    Mpegts(ext="ts")(decs = "MPEG Transport Stream"),
+    Mpeg,
+    Mpg,
+    Ogv,
+    Gif,
 
-impl Display for Video {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Video::Mp4 => write!(f, "mp4"),
-            Video::Mkv => write!(f, "mkv"),
-            Video::Avi => write!(f, "avi"),
-        }
+    ThreeG2(ext="3g2"),
+    ThreeGp(ext="3gp"),
+    F4v,
+    Nut,
+    Psp,
+    RealMedia(ext="rm"),
+    Swf,
+    Vcd(ext="dat"),
+    Hds(ext="f4m"),
+    Ismv
+}}
+
+impl Video {
+    pub fn all() -> Vec<Video> {
+        Video::iter().collect()
+    }
+
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        let ext = ext.trim_start_matches('.').to_lowercase();
+        Video::iter().find(|variant| variant.ext() == ext)
     }
 }
 
-#[derive(Data, Clone, Debug, PartialEq)]
-pub enum Audio {
-    Mp3,
-    Wav,
-    Flac,
+impl fmt::Display for Video {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.ext())
+    }
+}
+
+def_formats! {Audio{
+    Mp3(decs = "MPEG-1 Audio Layer 3"),
+    Wav(decs = "Waveform Audio File Format"),
+    Flac(decs = "Free Lossless Audio Codec"),
+    Aac(decs = "Advanced Audio Coding"),
+    Ac3(decs = "Audio Codec 3"),
+    Opus(decs = "Opus Interactive Audio Codec"),
+    Vorbis(ext = "ogg")(decs = "Xiph Vorbis audio"),
+    Alac(ext = "m4a")(decs = "Apple Lossless Audio Codec"),
+    Amr(decs = "Adaptive Multi-Rate Audio Codec"),
+    Wma(decs = "Windows Media Audio"),
+    Dts(decs = "DTS Coherent Acoustics"),
+    Lpcm(decs = "Linear PCM"),
+    Eac3(decs = "Enhanced AC-3"),
+    Dsd(ext = "dsf")(decs = "Direct Stream Digital"),
+    Ogg(decs = "Ogg container format"),
+    Tta(decs = "True Audio"),
+    Wv(decs = "WavPack")
+}}
+
+impl Audio {
+    pub fn all() -> Vec<Audio> {
+        Audio::iter().collect()
+    }
+
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        let ext = ext.trim_start_matches('.').to_lowercase();
+        Audio::iter().find(|variant| variant.ext() == ext)
+    }
 }
 
 impl Display for Audio {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Audio::Mp3 => write!(f, "mp3"),
-            Audio::Wav => write!(f, "wav"),
-            Audio::Flac => write!(f, "flac"),
-        }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.ext())
     }
 }

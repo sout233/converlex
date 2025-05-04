@@ -19,17 +19,21 @@ pub fn new(cx: &mut Context) -> Handle<Window> {
                     .then(AppSettings::ffmpeg_entry)
                     .map(|opt| opt.as_ref().map(|e| e.to_string()).unwrap_or_default());
 
-                Textbox::new(cx, ffmpeg_entry_binding).on_edit(move |cx, new_text| {
-                    let new_entry = if new_text.is_empty() {
-                        None
-                    } else {
-                        Some(FfmpegEntry::Path(PathBuf::from(new_text)))
-                    };
+                Textbox::new(cx, ffmpeg_entry_binding)
+                    .on_edit(move |cx, new_text| {
+                        let new_entry = if new_text.is_empty() {
+                            None
+                        } else {
+                            Some(FfmpegEntry::Path(PathBuf::from(new_text)))
+                        };
 
-                    cx.emit(AppEvent::UpdateFfmpegEntry(new_entry));
-                }).width(Stretch(1.0));
+                        cx.emit(AppEvent::UpdateFfmpegEntry(new_entry));
+                    })
+                    .width(Stretch(1.0));
             })
             .class("setting-row");
-        }).class("settings-window-content");
+        })
+        .class("settings-window-content");
     })
+    .title("Converlex - Settings")
 }

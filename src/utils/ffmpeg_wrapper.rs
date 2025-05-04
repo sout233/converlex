@@ -157,10 +157,9 @@ impl FfmpegTask {
             args.push(sr.to_string());
         }
 
-        
         // args.push("-f".into());
         // args.push(self.output_format.to_string().to_string());
-        
+
         args.extend(self.extra_args);
 
         args.push(output.to_string_lossy().into_owned());
@@ -194,7 +193,9 @@ impl FfmpegTask {
                 .await
                 {
                     Ok(_) => {
-                        let _ = tx.send(ProgressMsg::Done { task_id: task_id.to_string() });
+                        let _ = tx.send(ProgressMsg::Done {
+                            task_id: task_id.to_string(),
+                        });
                         println!("[Task {task_id}] ✅ Task completed.");
                     }
                     Err(e) => {
@@ -344,16 +345,28 @@ fn parse_time_str(s: &str) -> Option<f32> {
 }
 
 pub async fn find_ffmpeg() -> Option<FfmpegEntry> {
-    // check if env variable is set
-    if let Ok(output) = Command::new("ffmpeg").arg("-version").output().await {
-        if output.status.success() {
-            return Some(FfmpegEntry::Env);
+    #[cfg(unix)]
+    let which_cmd = Command::new("which").arg("ffmpeg").output();
+
+    #[cfg(windows)]
+    let which_cmd = Command::new("where").arg("ffmpeg").output();
+
+    // 1. use cmd to get path
+    if let Ok(output) = which_cmd.await {
+        let stdout = str::from_utf8(&output.stdout);
+        if let Ok(path)  = stdout && output.status.success(){
+            println!("{path}");
+            let first_path = path.lines().next();
+            if let Some(path) = first_path{
+                return Some(FfmpegEntry::Path(path.trim().into()));
+            }
         }
     }
 
     // 2. or use ffmpeg from current directory
     if let Ok(exe_path) = std::env::current_exe() {
         let exe_dir = exe_path.parent().unwrap_or(Path::new("."));
+        println!("exe_dir: {:?}", exe_dir);
         #[cfg(target_os = "windows")]
         let ffmpeg_path = exe_dir.join("ffmpeg.exe");
         #[cfg(not(target_os = "windows"))]
@@ -364,6 +377,13 @@ pub async fn find_ffmpeg() -> Option<FfmpegEntry> {
         }
     }
 
-    // 3. 404
+    // 3. check if env variable is set (has bug)
+    if let Ok(output) = Command::new("ffmpeg").arg("-version").output().await {
+        if output.status.success() {
+            return Some(FfmpegEntry::Env);
+        }
+    }
+
+    // end. 404
     None
 }

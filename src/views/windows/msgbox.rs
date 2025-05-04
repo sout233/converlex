@@ -1,4 +1,3 @@
-use crate::utils::ffmpeg_wrapper::FfmpegEntry;
 
 #[macro_export]
 macro_rules! err_msgbox {

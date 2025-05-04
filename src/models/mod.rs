@@ -3,4 +3,3 @@ pub mod media_format;
 pub mod task;
 pub mod convertible_format;
 pub mod app_settings;
-pub mod task_type;

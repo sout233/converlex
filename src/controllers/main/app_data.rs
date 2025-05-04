@@ -5,11 +5,14 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 use vizia::prelude::*;
 
+use super::app_event::AppEvent;
 use crate::{
     err_msgbox,
     models::{
-        app_settings::AppSettings, convertible_format::ConvertibleFormat,
-        media_format::MediaFormat, task::Task, task_type::TaskType,
+        app_settings::AppSettings,
+        convertible_format::ConvertibleFormat,
+        media_format::{Audio, MediaFormat, Video},
+        task::{Task, TaskStatus, TaskType},
     },
     unwrap_or_msgbox,
     utils::{
@@ -18,18 +21,17 @@ use crate::{
         utils::get_output_path,
     },
 };
-
-use super::app_event::AppEvent;
 type TaskId = String;
 
 #[derive(Lens, Data, Clone)]
 pub struct AppData {
     pub task_ids: Vec<TaskId>,        // 用于显示顺序
     pub tasks: HashMap<TaskId, Task>, // 实际数据
-    pub show_config_window: bool,
+    pub show_config_page: bool,
     pub configuring_taskid: Option<TaskId>,
     pub settings: AppSettings,
     pub show_settings_window: bool,
+    pub show_format_selctor_window: bool,
 }
 
 impl Model for AppData {
@@ -39,9 +41,13 @@ impl Model for AppData {
                 let final_name = match name {
                     Some(n) => n.clone(),
                     None => {
+                        let video_formats =
+                            Video::all().iter().map(|f| f.ext()).collect::<Vec<_>>();
+                        let audio_formats =
+                            Audio::all().iter().map(|f| f.ext()).collect::<Vec<_>>();
                         match FileDialog::new()
-                            .add_filter("video", &["mp4", "mkv", "avi"])
-                            .add_filter("audio", &["mp3", "wav", "flac"])
+                            .add_filter("video", video_formats.as_slice())
+                            .add_filter("audio", audio_formats.as_slice())
                             .add_filter("image", &["jpg", "jpeg", "png", "gif"])
                             .add_filter("All Files", &["*"])
                             .pick_file()
@@ -64,26 +70,21 @@ impl Model for AppData {
                 let output_format = arc_formats.first().unwrap().as_any();
 
                 let id = Uuid::new_v4().to_string();
-                self.tasks.insert(
-                    id.clone(),
-                    Task {
-                        input_path: final_name.clone(),
-                        output_path: get_output_path(&final_name, output_format, false),
-                        supported_output_formats: arc_formats,
-                        done: false,
-                        selected_output_format: 0,
-                        auto_rename: true,
-                        progress: 0.0,
-                        task_type: TaskType::Ffmpeg,
-                    },
+
+                let task = Task::new(
+                    final_name.clone(),
+                    get_output_path(&final_name, output_format, false),
+                    arc_formats,
+                    0,
                 );
+                self.tasks.insert(id.clone(), task);
 
                 self.task_ids.push(id);
             }
             AppEvent::RemoveAll => {
                 self.task_ids.clear();
                 self.tasks.clear();
-                self.show_config_window = false;
+                self.show_config_page = false;
             }
             AppEvent::ChangeOutputFormat(index, selected_format) => {
                 if let Some(task) = self.tasks.get_mut(index) {
@@ -100,7 +101,7 @@ impl Model for AppData {
             AppEvent::StartConvert => {
                 for task_id in &self.task_ids {
                     let task = &self.tasks[task_id];
-                    if task.done {
+                    if task.status != TaskStatus::Queued {
                         continue;
                     }
 
@@ -210,14 +211,15 @@ impl Model for AppData {
                                     });
                             }
                             ProgressMsg::Done { task_id } => {
-                                let _ =
-                                    event_proxy.emit(AppEvent::MarkDone(task_id)).map_err(|e| {
+                                let _ = event_proxy
+                                    .emit(AppEvent::MarkDone(task_id, true))
+                                    .map_err(|e| {
                                         eprintln!("❗ Error emitting COMPLETE event: {}", e);
                                     });
                             }
                             ProgressMsg::Error { task_id, error } => {
                                 let _ = event_proxy
-                                    .emit(AppEvent::MarkDone(task_id.clone()))
+                                    .emit(AppEvent::MarkDone(task_id.clone(), false))
                                     .map_err(|e| {
                                         eprintln!("❗ Error emitting ERROR event: {}", e);
                                     });
@@ -227,8 +229,8 @@ impl Model for AppData {
                     }
                 });
             }
-            AppEvent::ToggleConifgWindow(idx) => {
-                self.show_config_window = !self.show_config_window;
+            AppEvent::ToggleConifg(idx) => {
+                self.show_config_page = true;
                 self.configuring_taskid = Some(idx.to_string());
             }
             AppEvent::ToggleAutoRename(idx) => {
@@ -253,18 +255,23 @@ impl Model for AppData {
                 }
             }
             AppEvent::ConfigWindowClosing => {
-                self.show_config_window = false;
+                self.show_config_page = false;
                 self.configuring_taskid = None;
             }
             AppEvent::UpdateProgress(idx, new_progress) => {
                 if let Some(task) = self.tasks.get_mut(idx) {
                     task.progress = *new_progress;
+                    task.status = TaskStatus::Running;
                 }
             }
-            AppEvent::MarkDone(idx) => {
+            AppEvent::MarkDone(idx, is_sucess) => {
                 if let Some(task) = self.tasks.get_mut(idx) {
-                    task.done = true;
                     task.progress = 1.0;
+                    if *is_sucess {
+                        task.status = TaskStatus::Done;
+                    } else {
+                        task.status = TaskStatus::Failed;
+                    }
                 }
             }
             AppEvent::UpdateAppSettings(f) => {
@@ -277,6 +284,13 @@ impl Model for AppData {
             }
             AppEvent::UpdateFfmpegEntry(app_settings) => {
                 self.settings.ffmpeg_entry = app_settings.clone();
+            }
+            AppEvent::ToggleFormatSelectorWindow(idx) => {
+                self.show_format_selctor_window = true;
+                self.configuring_taskid = Some(idx.to_string());
+            }
+            AppEvent::FormatSelectorWindowClosing => {
+                self.show_format_selctor_window = false;
             }
         });
     }

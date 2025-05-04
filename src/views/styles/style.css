@@ -27,6 +27,7 @@ label.count {
 .main-container {
   alignment: top;
   padding: 10px;
+  gap:10px;
 }
 
 .menu-btns-row {
@@ -50,7 +51,7 @@ label.count {
 }
 
 .task-row {
-  height: 100px;
+  height: 110px;
   /* background-color: red; */
   alignment: top-left;
   padding: 10px;
@@ -60,30 +61,32 @@ label.count {
   border-color: rgb(0 0 0 / 10%);
 }
 
-.task-row-selected {
-  height: 100px;
-  /* background-color: red; */
-  alignment: top-left;
-  padding: 10px;
-  /* shadow: 0px 2px 20px rgb(0 0 0 / 10%); */
-  corner-radius: 12px;
-  border-width: 1px;
+.task-row.selected {
   border-color: #00c3ff49;
-  background-color: #00c3ff18;
+  background-color: #00c3ff0e;
 }
 
-.task-row:hover{
+.task-btns-row {
+  alignment: bottom-left;
+  gap: 10px;
+}
+
+.task-row:hover {
   background-color: #00000004;
 }
 
-.task-row .task-paths{
+.task-row.selected:hover {
+  background-color: #00c3ff18;
+}
+
+.task-row .task-paths {
   vertical-gap: 10px;
   alignment: top-center;
   /* background-color: red; */
   height: auto;
 }
 
-.task-row .task-paths hstack{
+.task-row .task-paths hstack {
   /* background-color: blue; */
   height: auto;
   alignment: top-left;
@@ -125,8 +128,70 @@ label.count {
 .badge-label {
   padding-left: 10px;
   padding-right: 10px;
-  background-color: blueviolet;
-  color: white;
   corner-radius: 12px;
   alignment: center;
+  background-color: blueviolet;
+  color: white;
+}
+
+.badge-label.primary {
+  background-color: blueviolet;
+  color: white;
+}
+
+.badge-label.warning {
+  background-color: #edaf00;
+  color: #411e03;
+}
+
+.badge-label.success {
+  background-color: #00ba7b;
+  color: #002c21;
+}
+
+.badge-label.error {
+  background-color: #fe1c55;
+  color: #4d0218;
+}
+
+.rounded-btn {
+  corner-radius: 24px;
+  height: 32px;
+  width: 32px;
+}
+
+.rounded-btn.ghost {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-width: 0px;
+}
+
+.format-row{
+  /* background-color: red; */
+  height: 40px;
+  corner-radius: 4px;
+  padding-left: 10px;
+  alignment: left;
+  border-width: 1px;
+  border-color: rgb(0 0 0 / 10%);
+}
+
+.format-row:hover{
+  background-color: #00000004;
+}
+
+.format-row.selected {
+  border-color: #00c3ff49;
+  background-color: #00c3ff0e;
+}
+
+.format-row.selected:hover {
+  background-color: #00c3ff18;
+}
+
+.format-list scroll-content {
+  vertical-gap: 5px;
+}
+
+.format-selector-main{
+  padding:10px
 }
