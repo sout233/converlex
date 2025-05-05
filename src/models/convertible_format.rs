@@ -6,6 +6,8 @@ pub trait ConvertibleFormat:Send + Sync {
     fn as_any(&self) -> &dyn ConvertibleFormat;
 
     fn get_ext(&self) -> String;
+
+    fn get_decs(&self) -> Option<String>;
 }
 
 impl Display for dyn ConvertibleFormat {

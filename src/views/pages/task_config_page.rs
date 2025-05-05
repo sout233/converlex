@@ -73,7 +73,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                             })
                             .disabled(is_auto_rename);
                         HStack::new(cx, |cx| {
-                            Label::new(cx, "Auto Rename");
+                            Label::new(cx, "Auto Rename").padding_right(Pixels(5.0));
 
                             let checkbox_index = Arc::clone(&index_clone);
                             Checkbox::new(cx, is_auto_rename).on_toggle(move |cx| {

@@ -167,7 +167,7 @@ label.count {
 
 .format-row{
   /* background-color: red; */
-  height: 40px;
+  height: 60px;
   corner-radius: 4px;
   padding-left: 10px;
   alignment: left;
@@ -194,4 +194,24 @@ label.count {
 
 .format-selector-main{
   padding:10px
+}
+
+.h1{
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.h2{
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.h3{
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.h4{
+  font-size: 16px;
+  font-weight: bold;
 }

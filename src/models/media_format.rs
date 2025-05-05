@@ -81,6 +81,14 @@ impl ConvertibleFormat for MediaFormat {
             MediaFormat::Video(video) => video.to_string(),
         }
     }
+    
+    fn get_decs(&self) -> Option<String> {
+        match self{
+            MediaFormat::Audio(audio) => audio.desc().map(|s| s.to_string()),
+            MediaFormat::Video(video) => video.desc().map(|s| s.to_string()),
+        }
+    }
+
 }
 
 def_formats! {Video{

@@ -33,6 +33,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                         Binding::new(cx, fmt, move |cx, format| {
                             let format = format.get(cx);
                             let format_name = format.as_any().get_ext();
+                            let format_decs = format.as_any().get_decs().unwrap_or_default();
                             let formats = formats_arc.get(cx);
                             let this_task_idx = formats
                                 .iter()
@@ -40,14 +41,18 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                 .unwrap_or(0);
                             let task_id = task_id_for_binding.clone();
 
-                            let ex_class_name = if this_task_idx == selected_output_format.get(cx) {
-                                "selected"
-                            } else {
-                                ""
-                            };
-
                             HStack::new(cx, |cx| {
-                                Label::new(cx, format_name);
+                                VStack::new(cx, |cx| {
+                                    Label::new(cx, format_name).class("h4");
+                                    Label::new(cx, format_decs).class("p-decs");
+                                }).alignment(Alignment::Left);
+                            })
+                            .bind(selected_output_format, move |handle, res| {
+                                if res.get(&handle) == this_task_idx {
+                                    handle.toggle_class("selected", true);
+                                } else {
+                                    handle.toggle_class("selected", false);
+                                }
                             })
                             .on_mouse_down(move |ex, button| {
                                 if button == MouseButton::Left {
@@ -57,8 +62,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                     ));
                                 }
                             })
-                            .class("format-row")
-                            .class(ex_class_name);
+                            .class("format-row");
                         });
                     })
                     .class("format-list");
