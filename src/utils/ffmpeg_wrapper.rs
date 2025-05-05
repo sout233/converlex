@@ -354,7 +354,8 @@ pub async fn find_ffmpeg() -> Option<FfmpegEntry> {
     // 1. use cmd to get path
     if let Ok(output) = which_cmd.await {
         let stdout = str::from_utf8(&output.stdout);
-        if let Ok(path)  = stdout && output.status.success(){
+        if stdout.is_ok()&& output.status.success() {
+            let path = stdout.unwrap();
             println!("{path}");
             let first_path = path.lines().next();
             if let Some(path) = first_path{
