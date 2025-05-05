@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vizia::prelude::*;
+use vizia::{icons::{ICON_MENU_3, ICON_SELECTOR}, prelude::*};
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
@@ -104,20 +104,23 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
 
                         let pick_index2 = Arc::clone(&index_clone);
                         Button::new(cx, |cx| {
-                            Label::new(cx, "").bind(
-                                supported_output_formats,
-                                move |handle, list| {
-                                    handle.bind(selected_output_format_idx, move |handle, sel| {
-                                        let selected_index = sel.get(&handle);
-                                        let list_len = list.map(|list| list.len()).get(&handle);
-                                        if selected_index < list_len {
-                                            handle.text(list.idx(selected_index));
-                                        } else {
-                                            handle.text("");
-                                        }
-                                    });
-                                },
-                            )
+                            HStack::new(cx, |cx| {
+                                Label::new(cx, "").bind(
+                                    supported_output_formats,
+                                    move |handle, list| {
+                                        handle.bind(selected_output_format_idx, move |handle, sel| {
+                                            let selected_index = sel.get(&handle);
+                                            let list_len = list.map(|list| list.len()).get(&handle);
+                                            if selected_index < list_len {
+                                                handle.text(list.idx(selected_index));
+                                            } else {
+                                                handle.text("");
+                                            }
+                                        });
+                                    },
+                                );
+                                Svg::new(cx, ICON_SELECTOR).padding_left(Pixels(5.0));
+                            }).alignment(Alignment::Center)
                         })
                         .on_press(move |cx| {
                             cx.emit(AppEvent::ToggleFormatSelectorWindow(

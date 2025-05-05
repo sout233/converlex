@@ -1,6 +1,9 @@
 use std::{sync::Arc, task};
 
-use vizia::prelude::*;
+use vizia::{
+    icons::{ICON_MENU_3, ICON_SELECTOR},
+    prelude::*,
+};
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
@@ -23,16 +26,25 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                     })
                     .class("config-row");
 
-                List::new(cx, supported_output_formats, |cx, _, fmt| {
-                    Binding::new(cx, fmt, |cx, format| {
-                            let task_id_for_binding = Arc::clone(&task_id_arc);
+                    let supported_output_formats_arc = Arc::new(supported_output_formats);
+                    List::new(cx, supported_output_formats, move |cx, _, fmt| {
+                        let task_id_for_binding = Arc::clone(&task_id_arc);
+                        let formats_arc = Arc::clone(&supported_output_formats_arc);
+                        Binding::new(cx, fmt, move |cx, format| {
                             let format = format.get(cx);
                             let format_name = format.as_any().get_ext();
-                            let formats = supported_output_formats.get(cx);
+                            let formats = formats_arc.get(cx);
                             let this_task_idx = formats
                                 .iter()
                                 .position(|f| f.as_any().get_ext() == format_name)
                                 .unwrap_or(0);
+                            let task_id = task_id_for_binding.clone();
+
+                            let ex_class_name = if this_task_idx == selected_output_format.get(cx) {
+                                "selected"
+                            } else {
+                                ""
+                            };
 
                             HStack::new(cx, |cx| {
                                 Label::new(cx, format_name);
@@ -40,12 +52,13 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                             .on_mouse_down(move |ex, button| {
                                 if button == MouseButton::Left {
                                     ex.emit(AppEvent::ChangeOutputFormat(
-                                        task_id_for_binding.to_string(),
+                                        task_id.to_string(),
                                         this_task_idx,
                                     ));
                                 }
                             })
-                            .class("format-row");
+                            .class("format-row")
+                            .class(ex_class_name);
                         });
                     })
                     .class("format-list");
