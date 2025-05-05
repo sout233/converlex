@@ -10,6 +10,26 @@ use crate::{
     models::task::Task,
 };
 
+
+#[derive(Lens, Data, Clone)]
+pub struct SelectorData{
+filter_text: Option<String>,
+}
+
+pub enum SelectorEvent {
+    UpdateFilterText(String),
+}
+
+impl Model for SelectorData {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|selector_event|{
+          match selector_event{
+            SelectorEvent::UpdateFilterText(text) => {}
+          }  
+        })
+    }
+}
+
 pub fn popup(cx: &mut Context) -> Handle<Window> {
     Window::popup(cx, true, |cx| {
         Binding::new(cx, AppData::configuring_taskid, |cx, task_id| {
@@ -23,6 +43,7 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                 VStack::new(cx, |cx| {
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output Format").class("title");
+                        // Textbox::new(cx,)
                     })
                     .class("config-row");
 
