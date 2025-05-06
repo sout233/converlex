@@ -1,6 +1,8 @@
 use vizia::prelude::*;
 
-use super::{convertible_format::ConvertibleFormat};
+use crate::utils::ffmpeg_wrapper::{FfmpegEntry, FfmpegTask};
+
+use super::{ convertible_format::ConvertibleFormat};
 use std::sync::Arc;
 
 
@@ -23,6 +25,7 @@ impl Task{
         output_path: String,
         supported_output_formats: Vec<Arc<dyn ConvertibleFormat>>,
         selected_output_format: usize,
+        ffmpeg_entry: FfmpegEntry
     ) -> Self {
         Self {
             input_path,
@@ -31,7 +34,7 @@ impl Task{
             selected_output_format,
             auto_rename:true,
             progress: 0.0,
-            task_type: TaskType::Ffmpeg,
+            task_type: TaskType::Ffmpeg(FfmpegTask::new(, output_format)),
             status: TaskStatus::Queued,
         }
     }
@@ -40,7 +43,7 @@ impl Task{
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum TaskType {
-    Ffmpeg,
+    Ffmpeg(FfmpegTask),
 }
 
 #[derive(Data, Clone, Debug, PartialEq)]

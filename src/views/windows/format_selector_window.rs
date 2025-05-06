@@ -10,10 +10,9 @@ use crate::{
     models::task::Task,
 };
 
-
 #[derive(Lens, Data, Clone)]
-pub struct SelectorData{
-filter_text: Option<String>,
+pub struct SelectorData {
+    filter_text: String,
 }
 
 pub enum SelectorEvent {
@@ -22,15 +21,20 @@ pub enum SelectorEvent {
 
 impl Model for SelectorData {
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
-        event.map(|selector_event|{
-          match selector_event{
-            SelectorEvent::UpdateFilterText(text) => {}
-          }  
+        event.map(|selector_event, _| match selector_event {
+            SelectorEvent::UpdateFilterText(text) => {
+                self.filter_text.clone_from(text);
+            }
         })
     }
 }
 
 pub fn popup(cx: &mut Context) -> Handle<Window> {
+    SelectorData {
+        filter_text: Default::default(),
+    }
+    .build(cx);
+
     Window::popup(cx, true, |cx| {
         Binding::new(cx, AppData::configuring_taskid, |cx, task_id| {
             let task_id = task_id.get(cx);
@@ -43,50 +47,73 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                 VStack::new(cx, |cx| {
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output Format").class("title");
-                        // Textbox::new(cx,)
+                        Textbox::new(cx, SelectorData::filter_text)
+                            .on_edit(|ex, new_text| {
+                                ex.emit(SelectorEvent::UpdateFilterText(new_text));
+                            })
+                            .placeholder("Search format").width(Pixels(200.0));
                     })
                     .class("config-row");
 
-                    let supported_output_formats_arc = Arc::new(supported_output_formats);
-                    List::new(cx, supported_output_formats, move |cx, _, fmt| {
-                        let task_id_for_binding = Arc::clone(&task_id_arc);
-                        let formats_arc = Arc::clone(&supported_output_formats_arc);
-                        Binding::new(cx, fmt, move |cx, format| {
-                            let format = format.get(cx);
-                            let format_name = format.as_any().get_ext();
-                            let format_decs = format.as_any().get_decs().unwrap_or_default();
-                            let formats = formats_arc.get(cx);
-                            let this_task_idx = formats
-                                .iter()
-                                .position(|f| f.as_any().get_ext() == format_name)
-                                .unwrap_or(0);
-                            let task_id = task_id_for_binding.clone();
-
-                            HStack::new(cx, |cx| {
-                                VStack::new(cx, |cx| {
-                                    Label::new(cx, format_name).class("h4");
-                                    Label::new(cx, format_decs).class("p-decs");
-                                }).alignment(Alignment::Left);
-                            })
-                            .bind(selected_output_format, move |handle, res| {
-                                if res.get(&handle) == this_task_idx {
-                                    handle.toggle_class("selected", true);
+                    Binding::new(cx, SelectorData::filter_text, move |cx, filter_text| {
+                        let supported_output_formats_arc = Arc::new(supported_output_formats);
+                        let task_id_arc2 = Arc::clone(&task_id_arc);
+                        let f = filter_text.get(cx);
+                        List::new_filtered(
+                            cx,
+                            supported_output_formats,
+                            move |item| {
+                                if f.is_empty() {
+                                    true
                                 } else {
-                                    handle.toggle_class("selected", false);
+                                    item.to_string()
+                                        .to_ascii_lowercase()
+                                        .contains(&f.to_ascii_lowercase())
                                 }
-                            })
-                            .on_mouse_down(move |ex, button| {
-                                if button == MouseButton::Left {
-                                    ex.emit(AppEvent::ChangeOutputFormat(
-                                        task_id.to_string(),
-                                        this_task_idx,
-                                    ));
-                                }
-                            })
-                            .class("format-row");
-                        });
-                    })
-                    .class("format-list");
+                            },
+                            move |cx, _, fmt| {
+                                let task_id_for_binding = Arc::clone(&task_id_arc2);
+                                let formats_arc = Arc::clone(&supported_output_formats_arc);
+                                Binding::new(cx, fmt, move |cx, format| {
+                                    let format = format.get(cx);
+                                    let format_name = format.as_any().get_ext();
+                                    let format_decs =
+                                        format.as_any().get_decs().unwrap_or_default();
+                                    let formats = formats_arc.get(cx);
+                                    let this_task_idx = formats
+                                        .iter()
+                                        .position(|f| f.as_any().get_ext() == format_name)
+                                        .unwrap_or(0);
+                                    let task_id = task_id_for_binding.clone();
+
+                                    HStack::new(cx, |cx| {
+                                        VStack::new(cx, |cx| {
+                                            Label::new(cx, format_name).class("h4");
+                                            Label::new(cx, format_decs).class("p-decs");
+                                        })
+                                        .alignment(Alignment::Left);
+                                    })
+                                    .bind(selected_output_format, move |handle, res| {
+                                        if res.get(&handle) == this_task_idx {
+                                            handle.toggle_class("selected", true);
+                                        } else {
+                                            handle.toggle_class("selected", false);
+                                        }
+                                    })
+                                    .on_mouse_down(move |ex, button| {
+                                        if button == MouseButton::Left {
+                                            ex.emit(AppEvent::ChangeOutputFormat(
+                                                task_id.to_string(),
+                                                this_task_idx,
+                                            ));
+                                        }
+                                    })
+                                    .class("format-row");
+                                });
+                            },
+                        )
+                        .class("format-list");
+                    });
                 })
                 .class("format-selector-main");
             }

@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
-use vizia::{icons::{ICON_MENU_3, ICON_SELECTOR}, prelude::*};
+use vizia::{
+    icons::{ICON_MENU_3, ICON_SELECTOR},
+    prelude::*,
+};
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
-    models::task::Task,
+    models::{convertible_format::FormatType, task::Task},
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
@@ -48,6 +51,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         );
                     })
                     .class("config-row");
+
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output").padding_right(Pixels(10.0));
 
@@ -83,6 +87,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         .class("auto-rename-checkbox");
                     })
                     .class("config-row");
+
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output Format").width(Stretch(1.0));
 
@@ -105,27 +110,67 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         let pick_index2 = Arc::clone(&index_clone);
                         Button::new(cx, |cx| {
                             HStack::new(cx, |cx| {
+                                let supported_output_formats = supported_output_formats.clone();
+                                let selected_output_format_idx = selected_output_format_idx.clone();
                                 Label::new(cx, "").bind(
                                     supported_output_formats,
                                     move |handle, list| {
-                                        handle.bind(selected_output_format_idx, move |handle, sel| {
-                                            let selected_index = sel.get(&handle);
-                                            let list_len = list.map(|list| list.len()).get(&handle);
-                                            if selected_index < list_len {
-                                                handle.text(list.idx(selected_index));
-                                            } else {
-                                                handle.text("");
-                                            }
-                                        });
+                                        handle.bind(
+                                            selected_output_format_idx,
+                                            move |handle, sel| {
+                                                let selected_index = sel.get(&handle);
+                                                let list_len =
+                                                    list.map(|list| list.len()).get(&handle);
+                                                if selected_index < list_len {
+                                                    handle.text(list.idx(selected_index));
+                                                } else {
+                                                    handle.text("");
+                                                }
+                                            },
+                                        );
                                     },
                                 );
                                 Svg::new(cx, ICON_SELECTOR).padding_left(Pixels(5.0));
-                            }).alignment(Alignment::Center)
+                            })
+                            .alignment(Alignment::Center)
                         })
                         .on_press(move |cx| {
                             cx.emit(AppEvent::ToggleFormatSelectorWindow(
                                 pick_index2.to_string(),
                             ));
+                        });
+                    })
+                    .class("config-row");
+
+                    // let videto_bitrate = item.then(Task::)
+                    HStack::new(cx, |cx| {
+                        let supported_output_formats = supported_output_formats.clone();
+                        let selected_output_format_idx = selected_output_format_idx.clone();
+
+                        Binding::new(cx, item.then(Task::task_type), move |cx, t_type| {
+                            Binding::new(
+                                cx,
+                                item.then(Task::selected_output_format),
+                                move |cx, idx| {
+                                    let task_type = t_type.get(cx);
+                                    let idx = idx.get(cx);
+                                    let selected_format = supported_output_formats.idx(idx);
+                                    Binding::new(cx, selected_format, |cx, format_name| {
+                                        let format_type = format_name.get(cx).get_type();
+
+                                        match format_type {
+                                            FormatType::Audio(_) => {
+                                                // Textbox::new(cx, format_name);
+                                                Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
+                                                Binding::new(cx, item.then(Task::), builder);
+                                            }
+                                            FormatType::Video(_) => {
+                                                Label::new(cx, "Video Bitrate").width(Stretch(1.0));
+                                            }
+                                        }
+                                    });
+                                },
+                            );
                         });
                     })
                     .class("config-row");

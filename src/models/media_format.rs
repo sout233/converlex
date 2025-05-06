@@ -7,6 +7,7 @@ use vizia::prelude::*;
 use crate::def_formats;
 
 use super::convertible_format::ConvertibleFormat;
+use super::convertible_format::FormatType;
 
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum MediaFormat {
@@ -88,6 +89,13 @@ impl ConvertibleFormat for MediaFormat {
             MediaFormat::Video(video) => video.desc().map(|s| s.to_string()),
         }
     }
+    
+    fn get_type(&self)->FormatType {
+        match self {
+            MediaFormat::Audio(audio) => FormatType::Audio(audio.clone()),
+            MediaFormat::Video(video) => FormatType::Video(video.clone()),
+        }
+    }
 
 }
 
@@ -149,7 +157,6 @@ def_formats! {Audio{
     Lpcm(decs = "Linear PCM"),
     Eac3(decs = "Enhanced AC-3"),
     Dsd(ext = "dsf")(decs = "Direct Stream Digital"),
-    Ogg(decs = "Ogg container format"),
     Tta(decs = "True Audio"),
     Wv(decs = "WavPack")
 }}
