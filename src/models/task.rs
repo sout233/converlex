@@ -34,7 +34,7 @@ impl Task{
             selected_output_format,
             auto_rename:true,
             progress: 0.0,
-            task_type: TaskType::Ffmpeg(FfmpegTask::new(, output_format)),
+            task_type: TaskType::Ffmpeg(FfmpegTask::new(ffmpeg_entry, output_format)),
             status: TaskStatus::Queued,
         }
     }

@@ -9,14 +9,13 @@ use super::app_event::AppEvent;
 use crate::{
     err_msgbox,
     models::{
-        app_settings::AppSettings,
         convertible_format::ConvertibleFormat,
         media_format::{Audio, MediaFormat, Video},
         task::{Task, TaskStatus, TaskType},
     },
     unwrap_or_msgbox,
     utils::{
-        ffmpeg_wrapper::{self, FfmpegTask, ProgressMsg},
+        ffmpeg_wrapper::{self, FfmpegEntry, FfmpegTask, ProgressMsg},
         fs::get_file_extension,
         utils::get_output_path,
     },
@@ -71,11 +70,14 @@ impl Model for AppData {
 
                 let id = Uuid::new_v4().to_string();
 
+                let ffmpeg_entry =
+                    unwrap_or_msgbox!(&self.settings.ffmpeg_entry, "未找到ffmpeg，请在设置中配置");
                 let task = Task::new(
                     final_name.clone(),
                     get_output_path(&final_name, output_format, false),
                     arc_formats,
                     0,
+                    ffmpeg_entry,
                 );
                 self.tasks.insert(id.clone(), task);
 

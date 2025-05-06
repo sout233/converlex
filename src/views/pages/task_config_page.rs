@@ -7,7 +7,7 @@ use vizia::{
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
-    models::{convertible_format::FormatType, task::Task},
+    models::{convertible_format::FormatType, task::{Task, TaskType}},
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
@@ -158,11 +158,14 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                     Binding::new(cx, selected_format, |cx, format_name| {
                                         let format_type = format_name.get(cx).get_type();
 
-                                        match format_type {
+                                        match &format_type {
                                             FormatType::Audio(_) => {
                                                 // Textbox::new(cx, format_name);
-                                                Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
-                                                Binding::new(cx, item.then(Task::), builder);
+                                                match &task_type {
+                                                    TaskType::Ffmpeg(ffmpeg_task) => {
+                                                        Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
+                                                    },
+                                                }
                                             }
                                             FormatType::Video(_) => {
                                                 Label::new(cx, "Video Bitrate").width(Stretch(1.0));
