@@ -9,9 +9,7 @@ use super::app_event::AppEvent;
 use crate::{
     err_msgbox,
     models::{
-        convertible_format::ConvertibleFormat,
-        media_format::{Audio, MediaFormat, Video},
-        task::{Task, TaskStatus, TaskType},
+        app_settings::AppSettings, convertible_format::ConvertibleFormat, media_format::{Audio, MediaFormat, Video}, task::{Task, TaskStatus, TaskType}
     },
     unwrap_or_msgbox,
     utils::{
@@ -77,7 +75,7 @@ impl Model for AppData {
                     get_output_path(&final_name, output_format, false),
                     arc_formats,
                     0,
-                    ffmpeg_entry,
+                    ffmpeg_entry.clone(),
                 );
                 self.tasks.insert(id.clone(), task);
 

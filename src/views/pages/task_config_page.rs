@@ -7,7 +7,10 @@ use vizia::{
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
-    models::{convertible_format::FormatType, task::{Task, TaskType}},
+    models::{
+        convertible_format::FormatType,
+        task::{Task, TaskType},
+    },
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
@@ -143,7 +146,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     .class("config-row");
 
                     // let videto_bitrate = item.then(Task::)
-                    HStack::new(cx, |cx| {
+                    VStack::new(cx, |cx| {
                         let supported_output_formats = supported_output_formats.clone();
                         let selected_output_format_idx = selected_output_format_idx.clone();
 
@@ -155,18 +158,55 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                     let task_type = t_type.get(cx);
                                     let idx = idx.get(cx);
                                     let selected_format = supported_output_formats.idx(idx);
-                                    Binding::new(cx, selected_format, |cx, format_name| {
-                                        let format_type = format_name.get(cx).get_type();
+                                    Binding::new(cx, selected_format, move |cx, format_binding| {
+                                        let format_type = format_binding.get(cx).get_type();
+
+                                        let x = format_binding.map(|fb| {
+                                            let t = fb.get_type();
+                                            match t {
+                                                FormatType::Audio(audio) => {}
+                                                FormatType::Video(video) => todo!(),
+                                            }
+                                        });
 
                                         match &format_type {
-                                            FormatType::Audio(_) => {
-                                                // Textbox::new(cx, format_name);
-                                                match &task_type {
-                                                    TaskType::Ffmpeg(ffmpeg_task) => {
-                                                        Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
-                                                    },
+                                            FormatType::Audio(_) => match &task_type {
+                                                TaskType::Ffmpeg(ffmpeg_task) => {
+                                                    let audio_bitrate = ffmpeg_task.audio_bitrate;
+                                                    let placeholder = if audio_bitrate.is_none() {
+                                                        "Undef"
+                                                    } else {
+                                                        ""
+                                                    };
+
+                                                    let audio_bitrate = t_type.map(|tt| match tt {
+                                                        TaskType::Ffmpeg(ffmpeg_task) => {
+                                                            if let Some(br) =
+                                                                ffmpeg_task.audio_bitrate
+                                                            {
+                                                                br.to_string()
+                                                            } else {
+                                                                String::default()
+                                                            }
+                                                        }
+                                                    });
+
+                                                    HStack::new(cx, |cx| {
+                                                        Label::new(cx, "Audio Bitrate")
+                                                            .width(Stretch(1.0));
+                                                        Textbox::new(cx, audio_bitrate)
+                                                            .placeholder(placeholder)
+                                                            .on_edit(|ex,new_txt|{
+                                                                let a = new_txt.parse::<u32>();
+                                                                if let Ok(new_bitrate) = a{
+                                                                    ex.emit(AppEvent::ChangeAudioBitrate(,new_bitrate));
+                                                                }else{
+                                                                    ex.set_text("0");
+                                                                }
+                                                            });
+                                                    });
                                                 }
-                                            }
+                                            },
                                             FormatType::Video(_) => {
                                                 Label::new(cx, "Video Bitrate").width(Stretch(1.0));
                                             }

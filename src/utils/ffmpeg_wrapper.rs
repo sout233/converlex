@@ -10,21 +10,36 @@ use vizia::prelude::*;
 use crate::err_msgbox;
 use crate::models::convertible_format::ConvertibleFormat;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Data)]
 pub struct FfmpegTask {
-    ffmpeg_entry: FfmpegEntry,
-    input: Option<PathBuf>,
-    output: Option<PathBuf>,
-    output_format: Arc<dyn ConvertibleFormat>,
-    video_bitrate: Option<u32>,
-    audio_bitrate: Option<u32>,
-    resolution: Option<(u32, u32)>,
-    frame_rate: Option<u32>,
-    sample_rate: Option<u32>,
-    extra_args: Vec<String>,
+    pub ffmpeg_entry: FfmpegEntry,
+    pub input: Option<PathBuf>,
+    pub output: Option<PathBuf>,
+    pub output_format: Arc<dyn ConvertibleFormat>,
+    pub video_bitrate: Option<u32>,
+    pub audio_bitrate: Option<u32>,
+    pub resolution: Option<(u32, u32)>,
+    pub frame_rate: Option<u32>,
+    pub sample_rate: Option<u32>,
+    pub extra_args: Vec<String>,
 }
 
-#[derive(Debug, Clone, Data)]
+impl PartialEq for FfmpegTask {
+    fn eq(&self, other: &Self) -> bool {
+        self.ffmpeg_entry == other.ffmpeg_entry
+            && self.input == other.input
+            && self.output == other.output
+            && self.output_format.get_ext() == other.output_format.get_ext()
+            && self.video_bitrate == other.video_bitrate
+            && self.audio_bitrate == other.audio_bitrate
+            && self.resolution == other.resolution
+            && self.frame_rate == other.frame_rate
+            && self.sample_rate == other.sample_rate
+            && self.extra_args == other.extra_args
+    }
+}
+
+#[derive(Debug, Clone, Data, PartialEq)]
 pub enum FfmpegEntry {
     Path(PathBuf),
     Env,
@@ -354,11 +369,11 @@ pub async fn find_ffmpeg() -> Option<FfmpegEntry> {
     // 1. use cmd to get path
     if let Ok(output) = which_cmd.await {
         let stdout = str::from_utf8(&output.stdout);
-        if stdout.is_ok()&& output.status.success() {
+        if stdout.is_ok() && output.status.success() {
             let path = stdout.unwrap();
             println!("{path}");
             let first_path = path.lines().next();
-            if let Some(path) = first_path{
+            if let Some(path) = first_path {
                 return Some(FfmpegEntry::Path(path.trim().into()));
             }
         }

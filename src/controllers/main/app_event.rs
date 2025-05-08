@@ -18,5 +18,6 @@ pub enum AppEvent {
     UpdateFfmpegEntry(Option<FfmpegEntry>),
     ToggleSettingsWindow,
     ToggleFormatSelectorWindow(TaskId),
-    FormatSelectorWindowClosing
+    FormatSelectorWindowClosing,
+    ChangeAudioBitrate(TaskId,u32)
 }

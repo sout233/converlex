@@ -46,12 +46,13 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
 
                 VStack::new(cx, |cx| {
                     HStack::new(cx, |cx| {
-                        Label::new(cx, "Output Format").class("title");
+                        Label::new(cx, "Output Format").class("title").width(Stretch(1.0));
                         Textbox::new(cx, SelectorData::filter_text)
                             .on_edit(|ex, new_text| {
                                 ex.emit(SelectorEvent::UpdateFilterText(new_text));
                             })
-                            .placeholder("Search format").width(Pixels(200.0));
+                            .placeholder("Search format")
+                            .width(Pixels(200.0));
                     })
                     .class("config-row");
 
