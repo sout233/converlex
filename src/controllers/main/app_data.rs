@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 
+use app_data_derived_lenses::task_ids;
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -9,7 +10,10 @@ use super::app_event::AppEvent;
 use crate::{
     err_msgbox,
     models::{
-        app_settings::AppSettings, convertible_format::ConvertibleFormat, media_format::{Audio, MediaFormat, Video}, task::{Task, TaskStatus, TaskType}
+        app_settings::AppSettings,
+        convertible_format::ConvertibleFormat,
+        media_format::{Audio, MediaFormat, Video},
+        task::{Task, TaskStatus, TaskType},
     },
     unwrap_or_msgbox,
     utils::{
@@ -292,6 +296,17 @@ impl Model for AppData {
             AppEvent::FormatSelectorWindowClosing => {
                 self.show_format_selctor_window = false;
             }
+            AppEvent::ChangeAudioBitrate(task_id, new_bitrate) => {
+                println!("{:?}",self.tasks);
+                println!("tid:{}",task_id.clone());
+                let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));
+                match &task.task_type{
+                    TaskType::Ffmpeg(ffmpeg_task) => {
+                        let new = ffmpeg_task.clone().audio_bitrate(*new_bitrate);
+                        task.task_type = TaskType::Ffmpeg(new);
+                    },
+                };
+            },
         });
     }
 }

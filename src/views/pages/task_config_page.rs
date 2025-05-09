@@ -11,15 +11,16 @@ use crate::{
         convertible_format::FormatType,
         task::{Task, TaskType},
     },
+    unwrap_or_msgbox,
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
     VStack::new(cx, |cx| {
-        Binding::new(cx, AppData::configuring_taskid, |cx, index| {
-            let index = index.get(cx);
-            if let Some(index) = index {
-                let index_clone = Arc::new(index.clone());
-                let item = AppData::tasks.map_ref(move |tasks| &tasks[&index]);
+        Binding::new(cx, AppData::configuring_taskid, |cx, tid| {
+            let taskid_opt = tid.get(cx);
+            if let Some(taskid) = taskid_opt {
+                let taskid_clone = Arc::new(taskid.clone());
+                let item = AppData::tasks.map_ref(move |tasks| &tasks[&taskid]);
                 let input_path = item.then(Task::input_path);
                 let output_path = item.then(Task::output_path);
                 let supported_output_formats = item.then(Task::supported_output_formats);
@@ -32,7 +33,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Input").padding_right(Pixels(10.0));
 
-                        let input_index = Arc::clone(&index_clone);
+                        let input_index = Arc::clone(&taskid_clone);
                         Textbox::new(cx, input_path).width(Stretch(1.0)).on_edit(
                             move |cx, new_input| {
                                 cx.emit(AppEvent::UpdateTask(
@@ -58,7 +59,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     HStack::new(cx, |cx| {
                         Label::new(cx, "Output").padding_right(Pixels(10.0));
 
-                        let output_index = Arc::clone(&index_clone);
+                        let output_index = Arc::clone(&taskid_clone);
                         Textbox::new(cx, output_path)
                             .width(Stretch(1.0))
                             .on_edit(move |cx, new_output| {
@@ -82,7 +83,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         HStack::new(cx, |cx| {
                             Label::new(cx, "Auto Rename").padding_right(Pixels(5.0));
 
-                            let checkbox_index = Arc::clone(&index_clone);
+                            let checkbox_index = Arc::clone(&taskid_clone);
                             Checkbox::new(cx, is_auto_rename).on_toggle(move |cx| {
                                 cx.emit(AppEvent::ToggleAutoRename(checkbox_index.to_string()));
                             });
@@ -110,7 +111,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         //     ));
                         // });
 
-                        let pick_index2 = Arc::clone(&index_clone);
+                        let pick_index2 = Arc::clone(&taskid_clone);
                         Button::new(cx, |cx| {
                             HStack::new(cx, |cx| {
                                 let supported_output_formats = supported_output_formats.clone();
@@ -149,8 +150,10 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     VStack::new(cx, |cx| {
                         let supported_output_formats = supported_output_formats.clone();
                         let selected_output_format_idx = selected_output_format_idx.clone();
+                        let taskid = Arc::new(tid);
 
                         Binding::new(cx, item.then(Task::task_type), move |cx, t_type| {
+                            let taskid = Arc::clone(&taskid);
                             Binding::new(
                                 cx,
                                 item.then(Task::selected_output_format),
@@ -158,16 +161,9 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                     let task_type = t_type.get(cx);
                                     let idx = idx.get(cx);
                                     let selected_format = supported_output_formats.idx(idx);
+                                    let taskid = Arc::clone(&taskid);
                                     Binding::new(cx, selected_format, move |cx, format_binding| {
                                         let format_type = format_binding.get(cx).get_type();
-
-                                        let x = format_binding.map(|fb| {
-                                            let t = fb.get_type();
-                                            match t {
-                                                FormatType::Audio(audio) => {}
-                                                FormatType::Video(video) => todo!(),
-                                            }
-                                        });
 
                                         match &format_type {
                                             FormatType::Audio(_) => match &task_type {
@@ -194,16 +190,18 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                                     HStack::new(cx, |cx| {
                                                         Label::new(cx, "Audio Bitrate")
                                                             .width(Stretch(1.0));
+                                                        let taskid = Arc::clone(&taskid);
+                                                        let taskid = Arc::new(unwrap_or_msgbox!(taskid.get(cx)));
                                                         Textbox::new(cx, audio_bitrate)
                                                             .placeholder(placeholder)
-                                                            .on_edit(|ex,new_txt|{
+                                                            .on_edit(move |ex,new_txt|{
                                                                 let a = new_txt.parse::<u32>();
                                                                 if let Ok(new_bitrate) = a{
-                                                                    ex.emit(AppEvent::ChangeAudioBitrate(,new_bitrate));
+                                                                    ex.emit(AppEvent::ChangeAudioBitrate(taskid.to_string(),new_bitrate));
                                                                 }else{
                                                                     ex.set_text("0");
                                                                 }
-                                                            });
+                                                            }).width(Pixels(50.0));
                                                     });
                                                 }
                                             },
