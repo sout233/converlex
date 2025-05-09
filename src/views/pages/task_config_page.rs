@@ -152,7 +152,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     });
 
                     let ab = task_type.map(|tt|{
-                        tt.audio_bitrate.unwrap()
+                        tt.audio_bitrate.unwrap_or(0)
                     });
 
                     let taskid = Arc::new(tid);
