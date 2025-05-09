@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, task};
 
 use vizia::{
     icons::{ICON_MENU_3, ICON_SELECTOR},
@@ -9,9 +9,9 @@ use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
     models::{
         convertible_format::FormatType,
-        task::{Task, TaskType},
+        task::{ Task, TaskType},
     },
-    unwrap_or_msgbox,
+    unwrap_or_msgbox, utils::ffmpeg_wrapper::FfmpegTask,
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
@@ -146,6 +146,26 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                     })
                     .class("config-row");
 
+                    let task_type = item.then(Task::task_type);
+                    let task_type = task_type.map(|tt| match tt {
+                        TaskType::Ffmpeg(a) => a.clone(),
+                    });
+
+                    let ab = task_type.map(|tt|{
+                        tt.audio_bitrate.unwrap()
+                    });
+
+                    let taskid = Arc::new(tid);
+                    let taskid = taskid.get(cx).unwrap();
+                    Textbox::new(cx, ab).on_edit(move |ex,new_text|{
+                        let a = new_text.parse::<u32>();
+                        if let Ok(new_bitrate) = a{
+                            ex.emit(AppEvent::ChangeAudioBitrate(taskid.to_string(),new_bitrate));
+                        }else{
+                            // ex.set_text("0");
+                        }
+                    });
+
                     // let videto_bitrate = item.then(Task::)
                     VStack::new(cx, |cx| {
                         let supported_output_formats = supported_output_formats.clone();
@@ -193,13 +213,13 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                                         let taskid = Arc::clone(&taskid);
                                                         let taskid = Arc::new(unwrap_or_msgbox!(taskid.get(cx)));
                                                         Textbox::new(cx, audio_bitrate)
-                                                            .placeholder(placeholder)
+                                                            // .placeholder(placeholder)
                                                             .on_edit(move |ex,new_txt|{
                                                                 let a = new_txt.parse::<u32>();
                                                                 if let Ok(new_bitrate) = a{
                                                                     ex.emit(AppEvent::ChangeAudioBitrate(taskid.to_string(),new_bitrate));
                                                                 }else{
-                                                                    ex.set_text("0");
+                                                                    // ex.set_text("0");
                                                                 }
                                                             }).width(Pixels(50.0));
                                                     });
