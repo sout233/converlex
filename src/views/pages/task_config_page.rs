@@ -181,7 +181,10 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                             Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
                                             Textbox::new(cx, audio_bitrate)
                                                 .on_edit(move |ex, new_text| {
-                                                    let digits_only: String = new_text.chars().filter(|c| c.is_ascii_digit()).collect();
+                                                    let digits_only: String = new_text
+                                                        .chars()
+                                                        .filter(|c| c.is_ascii_digit())
+                                                        .collect();
                                                     let a = digits_only.parse::<u32>();
                                                     if let Ok(new_bitrate) = a {
                                                         ex.emit(AppEvent::ChangeAudioBitrate(
@@ -189,62 +192,80 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                                             new_bitrate,
                                                         ));
                                                     } else {
+                                                        ex.set_text("1");
                                                         ex.emit(AppEvent::ChangeAudioBitrate(
                                                             taskid.to_string(),
-                                                            0,
+                                                            1,
                                                         ));
-                                                        ex.set_text("0");
+                                                        ex.focus_next();
                                                     }
                                                 })
-                                                .bind(audio_bitrate, |handle,new_txt|{
-                                                    handle.
-                                                })
                                                 .width(Pixels(100.0));
-                                        }).class("config-row");
+                                        })
+                                        .class("config-row");
                                     }
                                     FormatType::Video(_video) => {
-                                        VStack::new(cx, |cx|{
+                                        VStack::new(cx, |cx| {
                                             let taskid2 = Arc::clone(&taskid);
                                             HStack::new(cx, |cx| {
                                                 Label::new(cx, "Video Bitrate").width(Stretch(1.0));
                                                 Textbox::new(cx, video_bitrate)
                                                     .on_edit(move |ex, new_text| {
-                                                        let a = new_text.parse::<u32>();
+                                                        let digits_only: String = new_text
+                                                        .chars()
+                                                        .filter(|c| c.is_ascii_digit())
+                                                        .collect();
+                                                        let a = digits_only.parse::<u32>();
                                                         if let Ok(new_bitrate) = a {
                                                             ex.emit(AppEvent::ChangeVideoBitrate(
                                                                 taskid.to_string(),
                                                                 new_bitrate,
                                                             ));
                                                         } else {
-                                                            // ex.set_text("0");
+                                                            ex.set_text("1");
+                                                            ex.emit(AppEvent::ChangeVideoBitrate(
+                                                                taskid.to_string(),
+                                                                1,
+                                                            ));
+                                                            ex.focus_next();
                                                         }
                                                     })
                                                     .width(Pixels(100.0));
-                                            }).class("config-row");
+                                            })
+                                            .class("config-row");
                                             let taskid = Arc::clone(&taskid2);
                                             HStack::new(cx, |cx| {
                                                 Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
                                                 Textbox::new(cx, audio_bitrate)
                                                     .on_edit(move |ex, new_text| {
-                                                        let a = new_text.parse::<u32>();
+                                                        let digits_only: String = new_text
+                                                        .chars()
+                                                        .filter(|c| c.is_ascii_digit())
+                                                        .collect();
+                                                        let a = digits_only.parse::<u32>();
                                                         if let Ok(new_bitrate) = a {
                                                             ex.emit(AppEvent::ChangeAudioBitrate(
                                                                 taskid.to_string(),
                                                                 new_bitrate,
                                                             ));
                                                         } else {
-                                                            // ex.set_text("0");
+                                                            ex.set_text("1");
+                                                            ex.emit(AppEvent::ChangeAudioBitrate(
+                                                                taskid.to_string(),
+                                                                1,
+                                                            ));
+                                                            ex.focus_next();
                                                         }
                                                     })
                                                     .width(Pixels(100.0));
-                                            }).class("config-row");
+                                            })
+                                            .class("config-row");
                                         });
                                     }
                                 }
                             });
                         },
                     );
-
                 });
             }
         });
