@@ -297,8 +297,6 @@ impl Model for AppData {
                 self.show_format_selctor_window = false;
             }
             AppEvent::ChangeAudioBitrate(task_id, new_bitrate) => {
-                println!("{:?}",self.tasks);
-                println!("tid:{}",task_id.clone());
                 let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));
                 match &task.task_type{
                     TaskType::Ffmpeg(ffmpeg_task) => {
@@ -307,6 +305,15 @@ impl Model for AppData {
                     },
                 };
             },
+            AppEvent::ChangeVideoBitrate(task_id,new_bitrate)=>{
+                let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));
+                match &task.task_type{
+                    TaskType::Ffmpeg(ffmpeg_task) => {
+                        let new = ffmpeg_task.clone().video_bitrate(*new_bitrate);
+                        task.task_type = TaskType::Ffmpeg(new);
+                    },
+                };
+            }
         });
     }
 }

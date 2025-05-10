@@ -3,15 +3,17 @@ use std::{sync::Arc, task};
 use vizia::{
     icons::{ICON_MENU_3, ICON_SELECTOR},
     prelude::*,
+    vg::Pixel,
 };
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
     models::{
         convertible_format::FormatType,
-        task::{ Task, TaskType},
+        task::{Task, TaskType},
     },
-    unwrap_or_msgbox, utils::ffmpeg_wrapper::FfmpegTask,
+    unwrap_or_msgbox,
+    utils::ffmpeg_wrapper::FfmpegTask,
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {
@@ -151,90 +153,98 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                         TaskType::Ffmpeg(a) => a.clone(),
                     });
 
-                    let ab = task_type.map(|tt|{
-                        tt.audio_bitrate.unwrap_or(0)
+                    let audio_bitrate = task_type.map(|tt| match tt.audio_bitrate {
+                        Some(new) => new.to_string(),
+                        None => String::default(),
+                    });
+
+                    let video_bitrate = task_type.map(|tt| match tt.video_bitrate {
+                        Some(new) => new.to_string(),
+                        None => String::default(),
                     });
 
                     let taskid = Arc::new(tid);
-                    let taskid = taskid.get(cx).unwrap();
-                    Textbox::new(cx, ab).on_edit(move |ex,new_text|{
-                        let a = new_text.parse::<u32>();
-                        if let Ok(new_bitrate) = a{
-                            ex.emit(AppEvent::ChangeAudioBitrate(taskid.to_string(),new_bitrate));
-                        }else{
-                            // ex.set_text("0");
-                        }
-                    });
-
-                    // let videto_bitrate = item.then(Task::)
-                    VStack::new(cx, |cx| {
-                        let supported_output_formats = supported_output_formats.clone();
-                        let selected_output_format_idx = selected_output_format_idx.clone();
-                        let taskid = Arc::new(tid);
-
-                        Binding::new(cx, item.then(Task::task_type), move |cx, t_type| {
+                    Binding::new(
+                        cx,
+                        item.then(Task::selected_output_format),
+                        move |cx, idx| {
+                            let idx = idx.get(cx);
+                            let selected_format = supported_output_formats.idx(idx);
                             let taskid = Arc::clone(&taskid);
-                            Binding::new(
-                                cx,
-                                item.then(Task::selected_output_format),
-                                move |cx, idx| {
-                                    let task_type = t_type.get(cx);
-                                    let idx = idx.get(cx);
-                                    let selected_format = supported_output_formats.idx(idx);
-                                    let taskid = Arc::clone(&taskid);
-                                    Binding::new(cx, selected_format, move |cx, format_binding| {
-                                        let format_type = format_binding.get(cx).get_type();
+                            Binding::new(cx, selected_format, move |cx, format_binding| {
+                                let taskid = Arc::new(taskid.get(cx).unwrap_or_default());
+                                let format_type = format_binding.get(cx).get_type();
 
-                                        match &format_type {
-                                            FormatType::Audio(_) => match &task_type {
-                                                TaskType::Ffmpeg(ffmpeg_task) => {
-                                                    let audio_bitrate = ffmpeg_task.audio_bitrate;
-                                                    let placeholder = if audio_bitrate.is_none() {
-                                                        "Undef"
+                                match &format_type {
+                                    FormatType::Audio(_audio) => {
+                                        HStack::new(cx, |cx| {
+                                            Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
+                                            Textbox::new(cx, audio_bitrate)
+                                                .on_edit(move |ex, new_text| {
+                                                    let digits_only: String = new_text.chars().filter(|c| c.is_ascii_digit()).collect();
+                                                    let a = digits_only.parse::<u32>();
+                                                    if let Ok(new_bitrate) = a {
+                                                        ex.emit(AppEvent::ChangeAudioBitrate(
+                                                            taskid.to_string(),
+                                                            new_bitrate,
+                                                        ));
                                                     } else {
-                                                        ""
-                                                    };
-
-                                                    let audio_bitrate = t_type.map(|tt| match tt {
-                                                        TaskType::Ffmpeg(ffmpeg_task) => {
-                                                            if let Some(br) =
-                                                                ffmpeg_task.audio_bitrate
-                                                            {
-                                                                br.to_string()
-                                                            } else {
-                                                                String::default()
-                                                            }
-                                                        }
-                                                    });
-
-                                                    HStack::new(cx, |cx| {
-                                                        Label::new(cx, "Audio Bitrate")
-                                                            .width(Stretch(1.0));
-                                                        let taskid = Arc::clone(&taskid);
-                                                        let taskid = Arc::new(unwrap_or_msgbox!(taskid.get(cx)));
-                                                        Textbox::new(cx, audio_bitrate)
-                                                            // .placeholder(placeholder)
-                                                            .on_edit(move |ex,new_txt|{
-                                                                let a = new_txt.parse::<u32>();
-                                                                if let Ok(new_bitrate) = a{
-                                                                    ex.emit(AppEvent::ChangeAudioBitrate(taskid.to_string(),new_bitrate));
-                                                                }else{
-                                                                    // ex.set_text("0");
-                                                                }
-                                                            }).width(Pixels(50.0));
-                                                    });
-                                                }
-                                            },
-                                            FormatType::Video(_) => {
+                                                        ex.emit(AppEvent::ChangeAudioBitrate(
+                                                            taskid.to_string(),
+                                                            0,
+                                                        ));
+                                                        ex.set_text("0");
+                                                    }
+                                                })
+                                                .bind(audio_bitrate, |handle,new_txt|{
+                                                    handle.
+                                                })
+                                                .width(Pixels(100.0));
+                                        }).class("config-row");
+                                    }
+                                    FormatType::Video(_video) => {
+                                        VStack::new(cx, |cx|{
+                                            let taskid2 = Arc::clone(&taskid);
+                                            HStack::new(cx, |cx| {
                                                 Label::new(cx, "Video Bitrate").width(Stretch(1.0));
-                                            }
-                                        }
-                                    });
-                                },
-                            );
-                        });
-                    })
-                    .class("config-row");
+                                                Textbox::new(cx, video_bitrate)
+                                                    .on_edit(move |ex, new_text| {
+                                                        let a = new_text.parse::<u32>();
+                                                        if let Ok(new_bitrate) = a {
+                                                            ex.emit(AppEvent::ChangeVideoBitrate(
+                                                                taskid.to_string(),
+                                                                new_bitrate,
+                                                            ));
+                                                        } else {
+                                                            // ex.set_text("0");
+                                                        }
+                                                    })
+                                                    .width(Pixels(100.0));
+                                            }).class("config-row");
+                                            let taskid = Arc::clone(&taskid2);
+                                            HStack::new(cx, |cx| {
+                                                Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
+                                                Textbox::new(cx, audio_bitrate)
+                                                    .on_edit(move |ex, new_text| {
+                                                        let a = new_text.parse::<u32>();
+                                                        if let Ok(new_bitrate) = a {
+                                                            ex.emit(AppEvent::ChangeAudioBitrate(
+                                                                taskid.to_string(),
+                                                                new_bitrate,
+                                                            ));
+                                                        } else {
+                                                            // ex.set_text("0");
+                                                        }
+                                                    })
+                                                    .width(Pixels(100.0));
+                                            }).class("config-row");
+                                        });
+                                    }
+                                }
+                            });
+                        },
+                    );
+
                 });
             }
         });

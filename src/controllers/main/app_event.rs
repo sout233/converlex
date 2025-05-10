@@ -19,5 +19,6 @@ pub enum AppEvent {
     ToggleSettingsWindow,
     ToggleFormatSelectorWindow(TaskId),
     FormatSelectorWindowClosing,
-    ChangeAudioBitrate(TaskId,u32)
+    ChangeAudioBitrate(TaskId,u32),
+    ChangeVideoBitrate(TaskId,u32)
 }
