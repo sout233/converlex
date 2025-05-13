@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use super::media_format::{Audio, MediaFormat, Video};
+use super::media_format::{Audio, Video};
 
 pub trait ConvertibleFormat:Send + Sync {
     fn get_supported_output_formats(&self) -> Vec<Box<dyn ConvertibleFormat>>;

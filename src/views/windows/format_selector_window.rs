@@ -1,9 +1,6 @@
-use std::{sync::Arc, task};
+use std::sync::Arc;
 
-use vizia::{
-    icons::{ICON_MENU_3, ICON_SELECTOR},
-    prelude::*,
-};
+use vizia::prelude::*;
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
