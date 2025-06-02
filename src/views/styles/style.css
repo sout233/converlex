@@ -92,6 +92,16 @@ label.count {
   alignment: top-left;
 }
 
+.task-row .del-btn{
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.task-row:hover .del-btn{
+  opacity: 1;
+  transition: opacity 0.3s; 
+}
+
 .task-list scroll-content {
   vertical-gap: 20px;
 }
@@ -176,7 +186,7 @@ label.count {
 }
 
 .format-row:hover{
-  background-color: #00000004;
+  background-color: #291e1e04;
 }
 
 .format-row.selected {
@@ -215,3 +225,4 @@ label.count {
   font-size: 16px;
   font-weight: bold;
 }
+

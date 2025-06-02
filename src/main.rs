@@ -7,7 +7,10 @@ use models::{
 };
 use utils::fs::shorten_path;
 use views::pages::task_config_page;
-use vizia::{icons::ICON_SETTINGS, prelude::*};
+use vizia::{
+    icons::{ICON_SETTINGS, ICON_TRASH},
+    prelude::*,
+};
 
 mod controllers;
 mod macros;
@@ -130,6 +133,7 @@ async fn main() -> Result<(), ApplicationError> {
 
                                         if status.get(cx) == TaskStatus::Queued {
                                             HStack::new(cx, |cx| {
+                                                let index4togglecfg2 = Arc::clone(&index4togglecfg);
                                                 Button::new(cx, |cx| Svg::new(cx, ICON_SETTINGS))
                                                     .on_press(move |cx| {
                                                         cx.emit(AppEvent::ToggleConifg(
@@ -137,6 +141,15 @@ async fn main() -> Result<(), ApplicationError> {
                                                         ));
                                                     })
                                                     .class("rounded-btn");
+                                                Button::new(cx, |cx| Svg::new(cx, ICON_TRASH))
+                                                    .class("rounded-btn")
+                                                    .class("del-btn")
+                                                    .variant(ButtonVariant::Text)
+                                                    .on_press(move |cx| {
+                                                        cx.emit(AppEvent::RemoveTask(
+                                                            (&index4togglecfg2).to_string(),
+                                                        ))
+                                                    });
                                             })
                                             .class("task-btns-row");
                                         }
@@ -159,9 +172,9 @@ async fn main() -> Result<(), ApplicationError> {
                                         }
                                         TaskStatus::Done => {
                                             Label::new(cx, "Done")
-                                            .position_type(PositionType::Absolute)
-                                            .right(Pixels(10.0))
-                                            .bottom(Pixels(10.0))
+                                                .position_type(PositionType::Absolute)
+                                                .right(Pixels(10.0))
+                                                .bottom(Pixels(10.0))
                                                 .class("badge-label")
                                                 .class("success");
                                         }

@@ -248,7 +248,16 @@ impl Model for AppData {
                     }
                 }
             }
-            AppEvent::RemoveTask(_) => todo!(),
+            AppEvent::RemoveTask(id) => {
+                if let Some(index) = self.task_ids.iter().position(|x| x == id) {
+                    self.task_ids.remove(index);
+                }
+                self.tasks.remove(id);
+                if self.show_config_page && self.configuring_taskid.as_ref() == Some(id) {
+                    self.show_config_page = false;
+                    self.configuring_taskid = None;
+                }
+            },
             AppEvent::UpdateTask(index, task) => {
                 if let Some(existing_task) = self.tasks.get_mut(index) {
                     existing_task.input_path = task.input_path.clone();
