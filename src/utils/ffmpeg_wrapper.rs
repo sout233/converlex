@@ -107,13 +107,13 @@ impl FfmpegTask {
         self
     }
 
-    pub fn video_bitrate(mut self, kbps: u32) -> Self {
-        self.video_bitrate = Some(kbps);
+    pub fn video_bitrate(mut self, kbps: Option<u32>) -> Self {
+        self.video_bitrate = kbps;
         self
     }
 
-    pub fn audio_bitrate(mut self, kbps: u32) -> Self {
-        self.audio_bitrate = Some(kbps);
+    pub fn audio_bitrate(mut self, kbps: Option<u32>) -> Self {
+        self.audio_bitrate = kbps;
         self
     }
 
