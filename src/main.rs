@@ -7,7 +7,7 @@ use models::{
 };
 use utils::fs::shorten_path;
 use views::pages::task_config_page;
-use vizia::{icons::ICON_SETTINGS, prelude::*, vg::Pixel};
+use vizia::{icons::ICON_SETTINGS, prelude::*};
 
 mod controllers;
 mod macros;

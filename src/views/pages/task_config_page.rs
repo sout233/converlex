@@ -1,9 +1,8 @@
-use std::{sync::Arc, task};
+use std::sync::Arc;
 
 use vizia::{
-    icons::{ICON_MENU_3, ICON_SELECTOR},
+    icons::ICON_SELECTOR,
     prelude::*,
-    vg::Pixel,
 };
 
 use crate::{
@@ -12,8 +11,6 @@ use crate::{
         convertible_format::FormatType,
         task::{Task, TaskType},
     },
-    unwrap_or_msgbox,
-    utils::ffmpeg_wrapper::FfmpegTask,
 };
 
 pub fn new(cx: &mut Context) -> Handle<VStack> {

@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fs, path::Path, sync::Arc};
 
-use app_data_derived_lenses::task_ids;
 use rfd::{FileDialog, MessageButtons, MessageDialog, MessageDialogResult, MessageLevel};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -17,7 +16,7 @@ use crate::{
     },
     unwrap_or_msgbox,
     utils::{
-        ffmpeg_wrapper::{self, FfmpegEntry, FfmpegTask, ProgressMsg},
+        ffmpeg_wrapper::{self, FfmpegTask, ProgressMsg},
         fs::get_file_extension,
         utils::get_output_path,
     },
