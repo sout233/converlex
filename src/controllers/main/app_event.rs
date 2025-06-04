@@ -8,7 +8,7 @@ pub enum AppEvent {
     UpdateTask(String, Task),
     ToggleAutoRename(TaskId),
     ChangeOutputFormat(TaskId, usize),
-    StartConvert,
+    StartConvert(Option<Vec<TaskId>>),
     RemoveAll,
     ToggleConifg(TaskId),
     ConfigWindowClosing,

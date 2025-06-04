@@ -49,7 +49,7 @@ async fn main() -> Result<(), ApplicationError> {
                     Button::new(cx, |cx| Label::new(cx, "Remove All"))
                         .on_press(|ex| ex.emit(AppEvent::RemoveAll));
                     Button::new(cx, |cx| Label::new(cx, "Start Convert"))
-                        .on_press(|ex| ex.emit(AppEvent::StartConvert));
+                        .on_press(|ex| ex.emit(AppEvent::StartConvert(None)));
 
                     Button::new(cx, |cx| Label::new(cx, "Settings"))
                         .on_press(|ex| ex.emit(AppEvent::ToggleSettingsWindow));

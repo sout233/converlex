@@ -90,40 +90,40 @@ impl ConvertibleFormat for MediaFormat {
         }
     }
     
-    fn get_type(&self)->FormatType {
+    fn get_format_type(&self)->FormatType {
         match self {
             MediaFormat::Audio(audio) => FormatType::Audio(audio.clone()),
             MediaFormat::Video(video) => FormatType::Video(video.clone()),
         }
     }
-
 }
 
 def_formats! {Video{
-    Mp4,
-    Mkv,
-    Avi,
-    Mov,
-    Wmv,
-    Flv,
-    Webm,
-    Mpegts(ext="ts")(decs = "MPEG Transport Stream"),
-    Mpeg,
-    Mpg,
-    Ogv,
-    Gif,
+    Mp4(decs = "MPEG-4 Part 14, widely supported video container"),
+    Mkv(decs = "Matroska Multimedia Container"),
+    Avi(decs = "Audio Video Interleave, Microsoft format"),
+    Mov(decs = "Apple QuickTime Movie"),
+    Wmv(decs = "Windows Media Video"),
+    Flv(decs = "Flash Video Format"),
+    Webm(decs = "Web-optimized Matroska variant by Google"),
+    Mpegts(ext = "ts")(decs = "MPEG Transport Stream"),
+    Mpeg(decs = "MPEG-1 or MPEG-2 Video"),
+    Mpg(decs = "Alternative extension for MPEG video"),
+    Ogv(decs = "Ogg Video, Theora encoded"),
+    Gif(decs = "Graphics Interchange Format, supports animation"),
 
-    ThreeG2(ext="3g2"),
-    ThreeGp(ext="3gp"),
-    F4v,
-    Nut,
-    Psp,
-    RealMedia(ext="rm"),
-    Swf,
-    Vcd(ext="dat"),
-    Hds(ext="f4m"),
-    Ismv
+    ThreeG2(ext = "3g2")(decs = "3GPP2 multimedia format"),
+    ThreeGp(ext = "3gp")(decs = "3GPP multimedia format"),
+    F4v(decs = "Flash MP4 video format"),
+    Nut(decs = "Experimental multimedia container"),
+    Psp(decs = "PlayStation Portable media format"),
+    RealMedia(ext = "rm")(decs = "RealNetworks streaming format"),
+    Swf(decs = "Small Web Format for vector animation"),
+    Vcd(ext = "dat")(decs = "Video CD format"),
+    Hds(ext = "f4m")(decs = "HTTP Dynamic Streaming, Adobe format"),
+    Ismv(decs = "Smooth Streaming format from Microsoft")
 }}
+
 
 impl Video {
     pub fn all() -> Vec<Video> {

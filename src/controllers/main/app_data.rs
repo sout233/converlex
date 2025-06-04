@@ -101,9 +101,10 @@ impl Model for AppData {
                     }
                 }
             }
-            AppEvent::StartConvert => {
-                for task_id in &self.task_ids {
-                    let task = &self.tasks[task_id];
+            AppEvent::StartConvert(task_ids) => {
+                for task_id in task_ids.clone().unwrap_or(self.task_ids.clone()) {
+                    let task = &self.tasks[&task_id];
+                    println!("开始转换任务：{:?}", task.clone());
                     if task.status != TaskStatus::Queued {
                         continue;
                     }
@@ -257,7 +258,7 @@ impl Model for AppData {
                     self.show_config_page = false;
                     self.configuring_taskid = None;
                 }
-            },
+            }
             AppEvent::UpdateTask(index, task) => {
                 if let Some(existing_task) = self.tasks.get_mut(index) {
                     existing_task.input_path = task.input_path.clone();
@@ -306,20 +307,22 @@ impl Model for AppData {
             }
             AppEvent::ChangeAudioBitrate(task_id, new_bitrate) => {
                 let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));
-                match &task.task_type{
+                match &task.task_type {
                     TaskType::Ffmpeg(ffmpeg_task) => {
                         let new = ffmpeg_task.clone().audio_bitrate(*new_bitrate);
                         task.task_type = TaskType::Ffmpeg(new);
-                    },
+                    }
                 };
-            },
-            AppEvent::ChangeVideoBitrate(task_id,new_bitrate)=>{
+
+                println!("{:?}", task);
+            }
+            AppEvent::ChangeVideoBitrate(task_id, new_bitrate) => {
                 let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));
-                match &task.task_type{
+                match &task.task_type {
                     TaskType::Ffmpeg(ffmpeg_task) => {
                         let new = ffmpeg_task.clone().video_bitrate(*new_bitrate);
                         task.task_type = TaskType::Ffmpeg(new);
-                    },
+                    }
                 };
             }
         });

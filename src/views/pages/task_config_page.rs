@@ -174,7 +174,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                             Binding::new(cx, selected_format, move |cx, format_binding| {
                                 let taskid = Arc::new(taskid.get(cx).unwrap_or_default());
                                 let taskid2 = Arc::clone(&taskid);
-                                let format_type = format_binding.get(cx).get_type();
+                                let format_type = format_binding.get(cx).get_format_type();
 
                                 match &format_type {
                                     FormatType::Audio(_audio) => {
@@ -280,7 +280,7 @@ pub fn new(cx: &mut Context) -> Handle<VStack> {
                                                         ));
                                                     }
                                                 });
-                                                Label::new(cx, "Audio Bitrate").width(Stretch(1.0));
+                                                Label::new(cx, "Audio Bitrate").width(Stretch(1.0)).padding_left(Pixels(5.0));
                                                 Textbox::new(cx, audio_bitrate)
                                                     .on_edit(move |ex, new_text| {
                                                         let digits_only: String = new_text

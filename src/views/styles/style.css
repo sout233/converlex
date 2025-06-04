@@ -27,7 +27,7 @@ label.count {
 .main-container {
   alignment: top;
   padding: 10px;
-  gap:10px;
+  gap: 10px;
 }
 
 .menu-btns-row {
@@ -92,14 +92,14 @@ label.count {
   alignment: top-left;
 }
 
-.task-row .del-btn{
+.task-row .del-btn {
   opacity: 0;
   transition: opacity 0.3s;
 }
 
-.task-row:hover .del-btn{
+.task-row:hover .del-btn {
   opacity: 1;
-  transition: opacity 0.3s; 
+  transition: opacity 0.3s;
 }
 
 .task-list scroll-content {
@@ -164,6 +164,17 @@ label.count {
   color: #4d0218;
 }
 
+.badge-label.lite {
+  padding-left: 8px;
+  padding-right: 8px;
+  height: 18px;
+  background-color: #00000000;
+  color: #242424;
+  font-size: 12px;
+  border-width: 1px;
+  border-color: #00000020;
+}
+
 .rounded-btn {
   corner-radius: 24px;
   height: 32px;
@@ -175,7 +186,7 @@ label.count {
   border-width: 0px;
 }
 
-.format-row{
+.format-row {
   /* background-color: red; */
   height: 60px;
   corner-radius: 4px;
@@ -185,7 +196,7 @@ label.count {
   border-color: rgb(0 0 0 / 10%);
 }
 
-.format-row:hover{
+.format-row:hover {
   background-color: #291e1e04;
 }
 
@@ -202,27 +213,26 @@ label.count {
   vertical-gap: 5px;
 }
 
-.format-selector-main{
-  padding:10px
+.format-selector-main {
+  padding: 10px;
 }
 
-.h1{
+.h1 {
   font-size: 36px;
   font-weight: bold;
 }
 
-.h2{
+.h2 {
   font-size: 24px;
   font-weight: bold;
 }
 
-.h3{
+.h3 {
   font-size: 20px;
   font-weight: bold;
 }
 
-.h4{
+.h4 {
   font-size: 16px;
   font-weight: bold;
 }
-

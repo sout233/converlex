@@ -4,7 +4,7 @@ use vizia::prelude::*;
 
 use crate::{
     controllers::main::{app_data::AppData, app_event::AppEvent},
-    models::task::Task,
+    models::{convertible_format::FormatType, task::Task},
 };
 
 #[derive(Lens, Data, Clone)]
@@ -83,10 +83,18 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
                                         .position(|f| f.as_any().get_ext() == format_name)
                                         .unwrap_or(0);
                                     let task_id = task_id_for_binding.clone();
+                                    let format_type = match format.as_any().get_format_type(){
+                                        FormatType::Audio(_) => "Audio",
+                                        FormatType::Video(_) => "Video",
+                                    };
+
 
                                     HStack::new(cx, |cx| {
                                         VStack::new(cx, |cx| {
-                                            Label::new(cx, format_name).class("h4");
+                                            HStack::new(cx, |cx|{
+                                                Label::new(cx, format_name).padding_right(Pixels(5.0)).class("h4");
+                                                Label::new(cx, format_type).class("badge-label").class("lite");
+                                            }).height(Auto);
                                             Label::new(cx, format_decs).class("p-decs");
                                         })
                                         .alignment(Alignment::Left);

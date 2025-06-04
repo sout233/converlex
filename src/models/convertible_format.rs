@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use super::media_format::{Audio, Video};
+use super::{media_format::{Audio, Video}, task::TaskType};
 
-pub trait ConvertibleFormat:Send + Sync {
+pub trait ConvertibleFormat: Send + Sync {
     fn get_supported_output_formats(&self) -> Vec<Box<dyn ConvertibleFormat>>;
 
     fn as_any(&self) -> &dyn ConvertibleFormat;
@@ -11,7 +11,7 @@ pub trait ConvertibleFormat:Send + Sync {
 
     fn get_decs(&self) -> Option<String>;
 
-    fn get_type(&self)->FormatType;
+    fn get_format_type(&self) -> FormatType;
 }
 
 impl Display for dyn ConvertibleFormat {
@@ -26,7 +26,7 @@ impl std::fmt::Debug for dyn ConvertibleFormat {
     }
 }
 
-pub enum FormatType{
+pub enum FormatType {
     Audio(Audio),
-    Video(Video)
+    Video(Video),
 }

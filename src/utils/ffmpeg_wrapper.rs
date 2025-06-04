@@ -138,6 +138,7 @@ impl FfmpegTask {
     }
 
     pub fn build(self) -> Result<(PathBuf, Vec<String>), String> {
+        println!("{:?}",self.clone());
         let input = self.input.ok_or("Missing input path")?;
         let output = self.output.ok_or("Missing output path")?;
 
