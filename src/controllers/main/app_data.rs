@@ -181,15 +181,12 @@ impl Model for AppData {
                     .iter()
                     .enumerate()
                     .map(|(_, (task_id, task))| {
-                        let output_format =
-                            Arc::clone(&task.supported_output_formats[task.selected_output_format]);
+                        let t = Into::<FfmpegTask>::into(task.clone())
+                            .ffmpeg_entry(ffmpeg_entry.clone())
+                            .input(task.input_path.clone())
+                            .output(task.output_path.clone());
 
-                        (
-                            task_id.clone(),
-                            FfmpegTask::new(ffmpeg_entry.clone(), output_format.clone()) //此处报错
-                                .input(task.input_path.clone())
-                                .output(task.output_path.clone()),
-                        )
+                        (task_id.clone(), t.clone())
                     })
                     .collect();
 
@@ -314,7 +311,8 @@ impl Model for AppData {
                     }
                 };
 
-                println!("{:?}", task);
+                println!("change audio bitrate{:?}", task);
+                println!("tasks: {:?}", self.tasks);
             }
             AppEvent::ChangeVideoBitrate(task_id, new_bitrate) => {
                 let task = unwrap_or_msgbox!(self.tasks.get_mut(task_id));

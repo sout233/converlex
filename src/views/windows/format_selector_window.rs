@@ -126,6 +126,8 @@ pub fn popup(cx: &mut Context) -> Handle<Window> {
         })
     })
     .title("Converlex - Format Selector")
+    .anchor_target(AnchorTarget::Window)
+    .parent_anchor(Anchor::Center)
     .on_close(|cx| {
         cx.emit(AppEvent::FormatSelectorWindowClosing);
     })

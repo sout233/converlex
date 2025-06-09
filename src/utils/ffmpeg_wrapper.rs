@@ -97,6 +97,11 @@ impl FfmpegTask {
         }
     }
 
+    pub fn ffmpeg_entry(mut self, entry: FfmpegEntry) -> Self {
+        self.ffmpeg_entry = entry;
+        self
+    }
+
     pub fn input(mut self, path: impl Into<PathBuf>) -> Self {
         self.input = Some(path.into());
         self
@@ -138,7 +143,7 @@ impl FfmpegTask {
     }
 
     pub fn build(self) -> Result<(PathBuf, Vec<String>), String> {
-        println!("{:?}",self.clone());
+        println!("building: {:?}",self.clone());
         let input = self.input.ok_or("Missing input path")?;
         let output = self.output.ok_or("Missing output path")?;
 

@@ -43,6 +43,14 @@ impl Task {
     }
 }
 
+impl Into<FfmpegTask> for Task {
+    fn into(self) -> FfmpegTask {
+        match self.task_type {
+            TaskType::Ffmpeg(ffmpeg_task) => ffmpeg_task,
+        }
+    } 
+}
+
 #[derive(Data, Clone, Debug, PartialEq)]
 pub enum TaskType {
     Ffmpeg(FfmpegTask),
